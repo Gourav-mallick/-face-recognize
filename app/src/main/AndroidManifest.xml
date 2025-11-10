@@ -13,6 +13,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
 
     <!--  Require NFC hardware -->
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
@@ -51,6 +57,10 @@
         <activity android:name=".view.SubjectSelectActivity"/>
         <activity android:name=".view.AttendanceOverviewActivity"/>
         <activity android:name=".view.SyncAttendanceToServer"/>
+
+        <activity android:name=".view.EnrollActivity" />
+        <activity android:name=".view.CameraCaptureActivity"
+            android:exported="false" />
 
 
     </application>

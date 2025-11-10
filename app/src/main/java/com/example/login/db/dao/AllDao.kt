@@ -52,6 +52,10 @@ interface StudentsDao {
     ): Student?
 
 
+    @Query("UPDATE students SET embedding = :embedding WHERE studentId = :studentId")
+    suspend fun updateStudentEmbedding(studentId: String, embedding: String)
+
+
 }
 
 
@@ -89,6 +93,11 @@ interface TeachersDao {
         namePart3: String?
     ): Teacher?
 
+
+
+
+    @Query("UPDATE teachers SET embedding = :embedding WHERE staffId = :teacherId")
+    suspend fun updateTeacherEmbedding(teacherId: String, embedding: String)
 
 }
 

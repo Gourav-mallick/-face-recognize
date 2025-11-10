@@ -12,6 +12,7 @@ data class Student(
     val studentName: String,
     val classId: String,
     val instId: String, // store the institute ID
+    val embedding: String? = null // store the embedding as a string
 ) : Parcelable
 
 
@@ -21,7 +22,8 @@ data class Student(
 data class Teacher(
     @PrimaryKey val staffId: String,
     val staffName: String,
-    val instId: String // store the institute ID
+    val instId: String, // store the institute ID
+    val embedding: String? = null
 ) : Parcelable
 
 

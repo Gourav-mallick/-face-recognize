@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.login"
-        minSdk = 19
+        minSdk = 21
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -20,6 +20,10 @@ android {
 
         //Add this for minSdk 19 support with Room
         multiDexEnabled = true
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 
     buildTypes {
@@ -111,6 +115,15 @@ dependencies {
     implementation("commons-net:commons-net:3.9.0")
 
 
+    implementation("com.google.mlkit:face-detection:16.1.5")
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+
+
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
 
 }
 

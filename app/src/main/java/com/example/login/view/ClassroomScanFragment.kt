@@ -78,6 +78,20 @@ class ClassroomScanFragment : Fragment() {
                 .show()
         }
 
+        //face recognize enrollment
+        val tvEnrollUser=view.findViewById<Button>(R.id.tvEnrollUser)
+        tvEnrollUser.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle("Enroll User")
+                .setMessage("Do you want to Enroll User?")
+                .setPositiveButton("Yes") { _, _ ->
+                    showAuthDialogForEnrollment()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+
 // Listen for broadcast updates
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -208,6 +222,42 @@ class ClassroomScanFragment : Fragment() {
 
         dialog.show()
     }
+
+
+    private fun showAuthDialogForEnrollment() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_auth_sync, null)
+        val edtUsername = dialogView.findViewById<EditText>(R.id.edtUsername)
+        val edtPassword = dialogView.findViewById<EditText>(R.id.edtPassword)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        val btnSubmit = dialogView.findViewById<Button>(R.id.btnSubmit)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnSubmit.setOnClickListener {
+            val enteredUser = edtUsername.text.toString().trim()
+            val enteredPass = edtPassword.text.toString().trim()
+            val prefs = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+            val savedUser = prefs.getString("username", "")
+            val savedPass = prefs.getString("password", "")
+
+            if (enteredUser == savedUser && enteredPass == savedPass) {
+                dialog.dismiss()
+                // Call EnrollActivity here
+                val intent = Intent(requireContext(), EnrollActivity::class.java)
+                startActivity(intent)
+            } else {
+                Toast.makeText(requireContext(), "Invalid credentials!", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.show()
+    }
+
 
 
     private fun showProgressAndSync() {

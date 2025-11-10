@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <!-- Live camera preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Dark mask to dim background when a shot is taken -->
+    <View
+        android:id="@+id/dimView"
+        android:visibility="gone"
+        android:background="#80000000"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Capture overlay (shown AFTER auto-capture) -->
+    <LinearLayout
+        android:id="@+id/overlayPanel"
+        android:visibility="gone"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Captured face preview -->
+        <ImageView
+            android:id="@+id/capturedImage"
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:scaleType="centerCrop"
+            android:background="#20000000"
+            android:layout_marginBottom="20dp" />
+
+        <!-- Buttons row -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/btnTryAgain"
+                android:layout_width="140dp"
+                android:layout_height="44dp"
+                android:text="Try Again"
+                android:layout_marginEnd="12dp" />
+
+            <Button
+                android:id="@+id/btnSubmit"
+                android:layout_width="140dp"
+                android:layout_height="44dp"
+                android:text="Submit" />
+        </LinearLayout>
+
+        <!-- Enrollment state text (optional; controlled by caller) -->
+        <TextView
+            android:id="@+id/tvEnrollState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+
+        <TextView
+            android:id="@+id/tvEnrollName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+</FrameLayout>
