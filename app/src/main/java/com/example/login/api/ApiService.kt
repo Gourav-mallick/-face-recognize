@@ -23,7 +23,7 @@ interface ApiService {
     // Fetch student list by passing JSON query
     @GET("sims-services/digitalsims/")
     suspend fun getStudents(
-        @Query("r") r: String = "api/v1/StudentEnrollment/GetStudList",
+        @Query("r") r: String = "api/v1/User/GetUserRegisteredDetails",
         @Query("data") data: String
     ): Response<ResponseBody>
 

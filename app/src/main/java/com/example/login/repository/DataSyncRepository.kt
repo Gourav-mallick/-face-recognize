@@ -20,8 +20,8 @@ class DataSyncRepository(private val context: Context) {
         db: AppDatabase,
         instIds: String
     ): Boolean = withContext(Dispatchers.IO) {
-        val rParam = "api/v1/StudentEnrollment/GetStudList"
-        val dataParam = "{\"studListParamData\":{\"actionType\":\"FingerPrint\",\"school_id\":\"$instIds\"}}"
+        val rParam = "api/v1/User/GetUserRegisteredDetails"
+        val dataParam = "{\"userRegParamData\":{\"userType\":\"student\",\"registrationType\":\"FingerPrint\",\"school_id\":\"$instIds\"}}"
         val response = apiService.getStudents(rParam, dataParam)
 
         if (response.isSuccessful && response.body() != null) {
@@ -29,7 +29,7 @@ class DataSyncRepository(private val context: Context) {
             val json = JSONObject(jsonString)
             val collection = json.optJSONObject("collection")
             val responseObj = collection?.optJSONObject("response")
-            val dataArray = responseObj?.optJSONArray("studentData") ?: JSONArray()
+            val dataArray = responseObj?.optJSONArray("userRegisteredData") ?: JSONArray()
 
             val studentsList = mutableListOf<Student>()
             val classList = mutableListOf<Class>()
@@ -39,15 +39,18 @@ class DataSyncRepository(private val context: Context) {
                 val studentId = obj.optString("studentId", "")
                 val studentName = obj.optString("studentName", "")
                 val classId = obj.optString("classId", "")
-                val classShortName = obj.optString("classShortName", "")
+                val classShortName = obj.optString("userClassShortName", "")
+                val fingerType= obj.optString("fingerType", "")
+                val fingerData= obj.optString("fingerData", "")
                 val instId = obj.optString("instId", "")
-                studentsList.add(Student(studentId, studentName, classId, instId))
+                studentsList.add(Student(studentId, studentName, classId, instId,fingerType,fingerData))
                 classList.add(Class(classId, classShortName))
             }
 
             db.studentsDao().insertAll(studentsList)
             db.classDao().insertAll(classList)
             Log.d(TAG, "Inserted ${studentsList.size} students and ${classList.size} classes.")
+            Log.d(TAG, "Inserted ${studentsList} students.")
             true
         } else {
             Log.e(TAG, "STUDENT_API_FAILED: ${response.errorBody()?.string()}")
@@ -79,7 +82,9 @@ class DataSyncRepository(private val context: Context) {
                         Teacher(
                             obj.optString("staffId", ""),
                             obj.optString("staffName", ""),
-                            obj.optString("instId", "")
+                            obj.optString("instId", ""),
+                            obj.optString("fingerType", ""),
+                            obj.optString("fingerData", "")
                         )
                     )
                 }
