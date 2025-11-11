@@ -16,6 +16,46 @@
         tools:layout_editor_absoluteX="16dp"
         tools:layout_editor_absoluteY="-2dp">
 
+
+        <!-- Top: Camera Preview with Overlay -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="3"
+            android:background="#000000"
+            app:layout_constraintBottom_toTopOf="@+id/tvInstruction"
+            app:layout_constraintTop_toBottomOf="@+id/tvTitle"
+            tools:layout_editor_absoluteX="8dp">
+
+            <!-- Transparent Circular Overlay -->
+
+            <androidx.camera.view.PreviewView
+                android:id="@+id/viewFinder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center" />
+
+            <View
+                android:id="@+id/faceGuide"
+                android:layout_width="250dp"
+                android:layout_height="250dp"
+                android:layout_gravity="center"
+                android:background="@drawable/circle_overlay" />
+
+            <!-- Lighting or Status Message -->
+            <TextView
+                android:id="@+id/tvLightWarning"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|center_horizontal"
+                android:padding="8dp"
+                android:text="Ensure proper lighting"
+                android:textColor="#FFEB3B"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </FrameLayout>
+
         <TextView
             android:id="@+id/tvTitle"
             android:layout_width="match_parent"
@@ -37,100 +77,101 @@
             android:id="@+id/tvInstruction"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"
             android:gravity="center"
             android:padding="12dp"
             android:text="Tap student card / Other Card"
             android:textColor="#141313"
             android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/tvTeacherName"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvTitle" />
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/tvTeacherName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
             android:gravity="center"
             android:text=""
             android:textColor="#141313"
             android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/tvTeacherLabel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.508"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvInstruction" />
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/tvTeacherLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginBottom="12dp"
             android:gravity="center"
             android:text="Teacher Name"
             android:textColor="#141313"
             android:textSize="16sp"
             android:textStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/tvPresentCount"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvTeacherName" />
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/tvPresentCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
             android:text="0"
             android:textColor="#141313"
             android:textSize="24sp"
+            app:layout_constraintBottom_toTopOf="@+id/tvTotalStudentLabel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.497"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvTeacherLabel" />
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- Instruction Text -->
 
         <TextView
             android:id="@+id/tvTotalStudentLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginBottom="16dp"
             android:gravity="center"
             android:text="Total Present Student"
             android:textColor="#141313"
             android:textSize="16sp"
             android:textStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/tvLastStudent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvPresentCount" />
+            app:layout_constraintStart_toStartOf="parent" />
 
-        <!-- Instruction Text -->
         <TextView
             android:id="@+id/tvLastStudent"
             android:layout_width="363dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginBottom="4dp"
             android:gravity="center"
             android:padding="8dp"
             android:text=""
             android:textColor="#141313"
             android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/tvLatestCardTapStudentLabel"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvTotalStudentLabel" />
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/tvLatestCardTapStudentLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
             android:gravity="center"
             android:text=""
             android:textColor="#141313"
-            android:textStyle="bold"
             android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvLastStudent" />
-
+            app:layout_constraintHorizontal_bias="0.498"
+            app:layout_constraintStart_toStartOf="parent" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

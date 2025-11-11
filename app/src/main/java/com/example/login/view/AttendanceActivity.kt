@@ -569,15 +569,12 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             db.attendanceDao().insertAttendance(attendance)
             saveCurrentCycle()
             val frag = supportFragmentManager.findFragmentByTag(TAG_STUDENT)
-            if (frag is StudentScanFragment) frag.addStudent(student)
+            if (frag is StudentScanFragment) frag.addStudentUI(student)
+
         }
     }
 
-    // ---------------- End / Submit class ----------------
-    private fun showEndClassDialogForVisibleClass() {
-        val classroomId = currentVisibleClassroomId ?: return
-        showEndClassDialog(classroomId)
-    }
+
 
     // ----------------- End Class -----------------
     private fun showEndClassDialog(classroomId: String) {
@@ -898,8 +895,6 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
     }
 
 
-
-
     // Fetch active session from DB
     private suspend fun getActiveSession(classId: String, teacherId: String): ActiveClassCycle? {
         val db = AppDatabase.getDatabase(this)
@@ -929,6 +924,33 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
         all.find { it.classroomId == classId && it.teacherId == teacherId }?.let {
             db.activeClassCycleDao().delete(it)
         }
+    }
+
+    fun simulateClassroomScan(classroomId: String, classroomName: String) {
+        handleClassScan(classroomId, classroomName)
+    }
+
+
+    fun simulateTeacherScan(teacherId: String) {
+        lifecycleScope.launch {
+            val db = AppDatabase.getDatabase(this@AttendanceActivity)
+            val t = db.teachersDao().getTeacherById(teacherId)
+            if (t != null) handleTeacherScan(t.staffId, t.staffName)
+        }
+    }
+
+
+    fun simulateStudentScan(student: Student) {
+        handleStudentScan(student)   // call your private logic safely
+    }
+
+
+    fun showEndClassDialogForVisibleClass() {
+        // just expose the existing private one
+        // (if you have a private method with same name, rename that to something like doShowEndClassDialogForVisibleClass())
+        val classroomId = /* your existing field */ currentVisibleClassroomId ?: return
+        // call the existing private showEndClassDialog(classroomId)
+        showEndClassDialog(classroomId)
     }
 
 

@@ -149,6 +149,21 @@
             app:layout_constraintHorizontal_bias="0.383"
             app:layout_constraintStart_toStartOf="parent" />
 
+        <Button
+            android:id="@+id/tvStartClass"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginBottom="204dp"
+            android:background="@drawable/bg_button_gradient"
+            android:padding="10sp"
+            android:text="Click for strat class"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
         <LinearLayout
             android:id="@+id/layoutDateTimeVersion"
             android:layout_width="match_parent"

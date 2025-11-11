@@ -90,6 +90,11 @@ class ClassroomScanFragment : Fragment() {
                 .setNegativeButton("Cancel", null)
                 .show()
         }
+        val btnStartClass = view.findViewById<Button>(R.id.tvStartClass)
+        btnStartClass.setOnClickListener {
+            simulateClassroomCard()
+        }
+
 
 
 // Listen for broadcast updates
@@ -182,6 +187,15 @@ class ClassroomScanFragment : Fragment() {
 
 
     }
+
+
+
+    private fun simulateClassroomCard() {
+        val activity = requireActivity() as AttendanceActivity
+        activity.simulateClassroomScan("1", "Room 1")
+    }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()
