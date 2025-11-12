@@ -24,6 +24,7 @@
             android:id="@+id/tvHeader"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:gravity="center"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
@@ -103,20 +104,6 @@
 
 
         <!-- Date, Time, Version Row -->
-        <TextView
-            android:id="@+id/tvStart"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="To Start Attendance - Scan RoomCard"
-            android:textColor="@color/white"
-            android:textSize="18sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
 
         <TextView
             android:id="@+id/tvLastSync"
@@ -153,38 +140,40 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:layout_marginBottom="204dp"
+            android:layout_marginBottom="88dp"
             android:background="@color/btn_color"
             android:padding="10sp"
-            android:text="Click for strat class"
+            android:text="strat class"
             android:textColor="@color/black"
             android:textSize="14sp"
             app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.498"
             app:layout_constraintStart_toStartOf="parent" />
 
         <LinearLayout
             android:id="@+id/layoutDateTimeVersion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="50dp"
+            android:gravity="center_vertical"
+
             android:orientation="horizontal"
             android:paddingHorizontal="16dp"
-
-            android:gravity="center_vertical"
-            app:layout_constraintTop_toBottomOf="@id/tvStart"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintVertical_bias="1.0">
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
 
             <!-- 🔄 Sync Button (Left) -->
             <Button
                 android:id="@+id/tvManualDataSync"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:text="🔄"
-                android:textSize="18sp"
+                android:layout_gravity="center_vertical"
                 android:background="@color/btn_color"
+                android:text="🔄"
                 android:textColor="@color/black"
-                android:layout_gravity="center_vertical" />
+                android:textSize="18sp" />
 
             <!-- Spacer pushes version to the right -->
             <View
@@ -196,12 +185,12 @@
                 android:id="@+id/tvEnrollUser"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:text="Face Enroll"
-                android:textSize="14sp"
-                android:padding="10dp"
+                android:layout_gravity="center_vertical"
                 android:background="@color/btn_color"
+                android:padding="10dp"
+                android:text="Enroll"
                 android:textColor="@color/black"
-                android:layout_gravity="center_vertical" />
+                android:textSize="14sp" />
 
 
             <!-- Spacer pushes version to the right -->
@@ -215,10 +204,10 @@
                 android:id="@+id/tvVersion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:text="v1.51"
                 android:textColor="@color/white"
-                android:textSize="16sp"
-                android:layout_gravity="center_vertical" />
+                android:textSize="16sp" />
 
         </LinearLayout>
 

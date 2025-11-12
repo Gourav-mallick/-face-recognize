@@ -91,7 +91,7 @@ class AttendanceActivity : AppCompatActivity() {
         }
 
         // Restore pending sessions (endTime empty) into activeClasses
-       // restorePendingSessions()
+       restorePendingSessions()
     }
 
     override fun onResume() {
