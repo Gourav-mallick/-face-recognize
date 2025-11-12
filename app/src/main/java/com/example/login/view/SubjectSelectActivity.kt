@@ -217,19 +217,19 @@ class SubjectSelectActivity : ComponentActivity() {
 
                         Toast.makeText(this@SubjectSelectActivity, "Maltiple course added successfully", Toast.LENGTH_SHORT).show()
 
-                        // 🔹 Clear resume flag when proceeding
-                        getSharedPreferences("APP_STATE", MODE_PRIVATE)
-                            .edit()
-                            .remove("IS_IN_PERIOD_SELECT")
-                            .remove("SESSION_ID")
-                            .apply()
-
-
                         val intent = Intent(this@SubjectSelectActivity, AttendanceOverviewActivity::class.java)
                         intent.putStringArrayListExtra("SELECTED_CLASSES", ArrayList(selectedClasses))
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
-                        finish()
+
+                   // ✅ Delay clearing prefs slightly to prevent race condition
+                        lifecycleScope.launch {
+                            kotlinx.coroutines.delay(500)
+                            getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                            getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+                            finish()
+                        }
+
 
 
                     }
@@ -264,19 +264,19 @@ class SubjectSelectActivity : ComponentActivity() {
 
                         Toast.makeText(this@SubjectSelectActivity, "single course attendance added successfully", Toast.LENGTH_SHORT).show()
 
-                        // 🔹 Clear resume flag when proceeding
-                        getSharedPreferences("APP_STATE", MODE_PRIVATE)
-                            .edit()
-                            .remove("IS_IN_PERIOD_SELECT")
-                            .remove("SESSION_ID")
-                            .apply()
-
-
                         val intent = Intent(this@SubjectSelectActivity, AttendanceOverviewActivity::class.java)
                         intent.putStringArrayListExtra("SELECTED_CLASSES", ArrayList(selectedClasses))
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
-                        finish()
+
+                      // ✅ Delay clearing prefs slightly to prevent race condition
+                        lifecycleScope.launch {
+                            kotlinx.coroutines.delay(500)
+                            getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                            getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+                            finish()
+                        }
+
 
 
                     }

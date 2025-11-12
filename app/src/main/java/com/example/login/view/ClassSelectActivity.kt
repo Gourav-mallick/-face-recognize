@@ -74,12 +74,11 @@ class ClassSelectActivity : ComponentActivity() {
                 Toast.makeText(this@ClassSelectActivity, "Classes updated successfully", Toast.LENGTH_SHORT).show()
 
 
-                // 🔹 When continuing, clear resume flag so app won’t reopen here again
-                getSharedPreferences("APP_STATE", MODE_PRIVATE)
-                    .edit()
-                    .remove("IS_IN_CLASS_SELECT")
-                    .remove("SESSION_ID")
-                    .apply()
+
+                // ✅ Clear all saved app state to prevent reopening old fragments
+                getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+
 
                 // 🔹 Navigate next
                 val intent = Intent(this@ClassSelectActivity, SubjectSelectActivity::class.java)
@@ -97,9 +96,8 @@ class ClassSelectActivity : ComponentActivity() {
     // 🔹 Save app state so when reopened, it resumes here
     override fun onPause() {
         super.onPause()
-        getSharedPreferences("APP_STATE", MODE_PRIVATE)
-            .edit()
-            .putBoolean("IS_IN_CLASS_SELECT", true)
+        getSharedPreferences("APP_STATE", MODE_PRIVATE).edit()
+            .putString("CURRENT_SCREEN", "CLASS_SELECT")
             .putString("SESSION_ID", sessionId)
             .apply()
     }

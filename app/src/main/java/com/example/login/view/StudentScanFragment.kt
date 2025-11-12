@@ -1,6 +1,8 @@
 package com.example.login.view
 
 import android.Manifest
+import android.app.AlertDialog
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.os.Bundle
@@ -262,18 +264,84 @@ class StudentScanFragment : Fragment() {
                 }
 
                 // 1) Teacher match
+                // 1) Teacher match
                 if (bestIsTeacher) {
                     if (bestMatchId == currentTeacherId) {
-                        // Same teacher: show exit popup using your existing AttendanceActivity logic
-                        (requireActivity() as AttendanceActivity).showEndClassDialogForVisibleClass()
+                        // ✅ Check if there are any students marked present in this session
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val db = AppDatabase.getDatabase(requireContext())
+                            val attendanceCount = db.attendanceDao().getAttendancesForSession(sessionIdArg).size
+
+                            if (attendanceCount == 0) {
+                                withContext(Dispatchers.Main) {
+                                    AlertDialog.Builder(requireContext())
+                                        .setTitle("Close Class?")
+                                        .setMessage("No students are marked present in this class.\nDo you want to close and return to the start screen?")
+                                        .setPositiveButton("Yes") { dialog, _ ->
+                                            dialog.dismiss()
+                                            lifecycleScope.launch(Dispatchers.IO) {
+                                                val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                                    .format(java.util.Date())
+
+                                                // 🔹 End and delete session completely
+                                                db.sessionDao().getSessionById(sessionIdArg)?.let { session ->
+                                                    db.sessionDao().updateSessionEnd(session.sessionId, currentTime)
+                                                    db.attendanceDao().deleteAttendanceForSession(session.sessionId)
+                                                    db.activeClassCycleDao().getAll()
+                                                        .find { it.sessionId == session.sessionId }
+                                                        ?.let { db.activeClassCycleDao().delete(it) }
+                                                    db.sessionDao().deleteSessionById(session.sessionId)
+                                                }
+
+                                                withContext(Dispatchers.Main) {
+                                                    // 🔹 Clear saved app state
+                                                    val prefs1 = requireContext().getSharedPreferences("APP_STATE", Context.MODE_PRIVATE)
+                                                    prefs1.edit().clear().apply()
+
+                                                    val prefs2 = requireContext().getSharedPreferences("AttendancePrefs", Context.MODE_PRIVATE)
+                                                    prefs2.edit().clear().apply()
+
+                                                    Toast.makeText(
+                                                        requireContext(),
+                                                        "Class closed. Returning to start.",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+
+                                                    // 🔹 Restart app to starting fragment
+                                                    val intent = android.content.Intent(requireContext(), AttendanceActivity::class.java)
+                                                    intent.flags =
+                                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                                                android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                                android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                    startActivity(intent)
+                                                    requireActivity().finish()
+                                                }
+                                            }
+                                        }
+                                        .setNegativeButton("Cancel") { dialog, _ ->
+                                            dialog.dismiss()
+                                            Toast.makeText(requireContext(), "Class not closed", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .setCancelable(false)
+                                        .show()
+                                }
+                            }
+
+                            else {
+                                // 🔹 Students are present — normal flow (show end class popup)
+                                withContext(Dispatchers.Main) {
+                                    (requireActivity() as AttendanceActivity).showEndClassDialogForVisibleClass()
+                                }
+                            }
+                        }
                     } else {
-                        // Ignore different teacher
                         toast("Different teacher — ignored")
                     }
 
                     done()
                     return@withContext
                 }
+
 
                 // 2) Student match
                 val matchedStudent = db.studentsDao().getStudentById(bestMatchId!!)
@@ -304,8 +372,17 @@ class StudentScanFragment : Fragment() {
     private fun updatePresentCountUI() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(requireContext())
+            // Total count of students marked
             val count = db.attendanceDao().getAttendancesForSession(sessionIdArg).size
-            withContext(Dispatchers.Main) { tvPresentCount.text = count.toString() }
+
+            // Last student marked (from new DAO query)
+            val lastStudent = db.attendanceDao().getLastMarkedStudentNameForSession(sessionIdArg)
+
+            withContext(Dispatchers.Main) {
+                tvPresentCount.text = count.toString()
+                tvLastStudent.text = lastStudent ?: ""
+                tvLatestCardTapStudentLabel.text = if (lastStudent != null) "Latest Student" else ""
+            }
         }
     }
 

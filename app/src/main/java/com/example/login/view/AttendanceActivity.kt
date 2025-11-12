@@ -38,12 +38,21 @@ import android.net.ConnectivityManager
 import android.os.Handler
 import android.os.Looper
 import com.example.login.db.entity.ActiveClassCycle
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+
 
 class AttendanceActivity : AppCompatActivity() {
 
     private  var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
     private val TAG = "NFC_DEBUG"
+
+
+    private val CAMERA_PERMISSION_REQUEST_CODE = 1001
 
 
     companion object {
@@ -69,9 +78,57 @@ class AttendanceActivity : AppCompatActivity() {
     private var currentVisibleClassroomId: String? = null
     private var isTimeValid = false
 
+    // --- Save App State Helper ---
+    private fun updateAppState(screen: String) {
+        val prefs = getSharedPreferences("APP_STATE", MODE_PRIVATE).edit()
+        prefs.putString("CURRENT_SCREEN", screen)
+        prefs.putString("SESSION_ID", activeSessions.values.firstOrNull()?.sessionId)
+        prefs.putString("CLASSROOM_ID", currentVisibleClassroomId)
+        prefs.putString("TEACHER_ID", currentTeacherId)
+        prefs.putString("TEACHER_NAME", activeSessions.values.firstOrNull()?.teacherName)
+        prefs.apply()
+    }
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_attendance)
+
+        // 🔹 Check camera permission on app start
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_REQUEST_CODE
+            )
+        }
+
+
+
+        // 🔹 Restore screen if app was killed mid-session
+        val statePrefs = getSharedPreferences("APP_STATE", MODE_PRIVATE)
+        when (statePrefs.getString("CURRENT_SCREEN", null)) {
+            "TEACHER_SCAN" -> {
+                val classId = statePrefs.getString("CLASSROOM_ID", "")
+                val frag = TeacherScanFragment.newInstance(classId!!)
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, frag, "TEACHER")
+                    .commitAllowingStateLoss()
+                return
+            }
+            "STUDENT_SCAN" -> {
+                val teacherName = statePrefs.getString("TEACHER_NAME", "")
+                val sessionId = statePrefs.getString("SESSION_ID", "")
+                val frag = StudentScanFragment.newInstance(teacherName ?: "", sessionId ?: "")
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, frag, "STUDENT")
+                    .commitAllowingStateLoss()
+                return
+            }
+        }
+
         //if app exit then restore last cycle
         restoreLastCycleIfExists()
 
@@ -99,7 +156,7 @@ class AttendanceActivity : AppCompatActivity() {
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter == null) {
-            Toast.makeText(this, "NFC not supported on this device", Toast.LENGTH_LONG).show()
+           // Toast.makeText(this, "NFC not supported on this device", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -268,9 +325,12 @@ class AttendanceActivity : AppCompatActivity() {
 
                 // Go to teacher scan fragment
                 val frag = TeacherScanFragment.newInstance(classroomId)
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, frag, TAG_TEACHER)
-                    .commitAllowingStateLoss()
+                val transaction = supportFragmentManager.beginTransaction()
+                transaction.replace(R.id.fragment_container, frag, TAG_TEACHER)
+                transaction.addToBackStack(null)
+                updateAppState("TEACHER_SCAN")
+
+                transaction.commitAllowingStateLoss()
             } else {
 
                 // classroom card not for close we comment this part
@@ -380,9 +440,10 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 currentTeacherId = teacherId
                 Toast.makeText(this@AttendanceActivity, "Resuming your session...", Toast.LENGTH_SHORT).show()
                 val frag = StudentScanFragment.newInstance(teacherName,resumedSessionId)
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, frag, TAG_STUDENT)
-                    .commitAllowingStateLoss()
+                val transaction =supportFragmentManager.beginTransaction()
+                transaction.replace(R.id.fragment_container, frag, TAG_STUDENT)
+                updateAppState("STUDENT_SCAN")
+                transaction.commitAllowingStateLoss()
                 return@launch
             }
         }
@@ -451,9 +512,10 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             currentTeacherId = teacherId
 
             val frag = StudentScanFragment.newInstance(teacherName, sessionId)
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, frag, TAG_STUDENT)
-                .commitAllowingStateLoss()
+            val transaction =supportFragmentManager.beginTransaction()
+            transaction.replace(R.id.fragment_container, frag, TAG_STUDENT)
+            updateAppState("STUDENT_SCAN")
+            transaction.commitAllowingStateLoss()
         }
     }
 
@@ -577,7 +639,8 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
 
     // ----------------- End Class -----------------
-    private fun showEndClassDialog(classroomId: String) {
+    private fun
+            showEndClassDialog(classroomId: String) {
         val teacherId = currentTeacherId ?: return
         val cycle = activeSessions[Pair(classroomId, teacherId)] ?: return
         lifecycleScope.launch {
@@ -608,13 +671,22 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
                         Log.d("SESSION_END", "Session ${cycle.sessionId} closed at $currentTime")
 
+                        // ✅ Clear saved app state before starting new flow
+                        val prefs1 = getSharedPreferences("APP_STATE", MODE_PRIVATE)
+                        prefs1.edit().clear().apply()
+                        val prefs2 = getSharedPreferences("AttendancePrefs", MODE_PRIVATE)
+                        prefs2.edit().clear().apply()
+
                         val intent = Intent(this@AttendanceActivity, ClassSelectActivity::class.java)
                         intent.putExtra("SESSION_ID", cycle.sessionId)
                         intent.putExtra("TEACHER_ID", cycle.teacherId)
                         startActivity(intent)
+                        finish()
                         activeSessions.remove(Pair(classroomId, teacherId))
 
                         currentVisibleClassroomId = null
+
+
                     }
                 }
                 .setNegativeButton("No", null)
@@ -630,9 +702,10 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
     private fun startClassroomScanFragment() {
         if (supportFragmentManager.findFragmentByTag(TAG_CLASSROOM) == null) {
             val fragment = ClassroomScanFragment.newInstance()
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, fragment, TAG_CLASSROOM)
-                .commit()
+            val transaction = supportFragmentManager.beginTransaction()
+            transaction.replace(R.id.fragment_container, fragment, TAG_CLASSROOM)
+            updateAppState("CLASSROOM_SCAN")
+            transaction.commit()
         }
     }
 
@@ -951,6 +1024,23 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
         val classroomId = /* your existing field */ currentVisibleClassroomId ?: return
         // call the existing private showEndClassDialog(classroomId)
         showEndClassDialog(classroomId)
+    }
+
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Camera permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Camera permission denied. Face detection will not work.", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
 

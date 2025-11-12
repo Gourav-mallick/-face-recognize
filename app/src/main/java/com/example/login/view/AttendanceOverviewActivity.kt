@@ -41,9 +41,16 @@ class AttendanceOverviewActivity : ComponentActivity() {
         binding = ActivityAttendanceOverviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+
         db = AppDatabase.getDatabase(this)
         selectedClasses = intent.getStringArrayListExtra("SELECTED_CLASSES") ?: emptyList()
         sessionId = intent.getStringExtra("SESSION_ID") ?: ""
+
+
+        getSharedPreferences("APP_STATE", MODE_PRIVATE).edit()
+            .putString("CURRENT_SCREEN", "ATTENDANCE_OVERVIEW")
+            .putString("SESSION_ID", sessionId)
+            .apply()
 
         // ✅ Disable back press & back gesture for this screen
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -297,7 +304,10 @@ class AttendanceOverviewActivity : ComponentActivity() {
             .setCancelable(false)
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
-                // ✅ Go back to AttendanceActivity
+                // ✅ Clear all saved states before restarting
+                getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+
                 val intent = Intent(this@AttendanceOverviewActivity, AttendanceActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)

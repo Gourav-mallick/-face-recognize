@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.activity.OnBackPressedCallback
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
@@ -47,6 +48,9 @@ class TeacherScanFragment : Fragment() {
     private val DIST_THRESHOLD = 0.80f     // keep same as activity
     private val CROP_SCALE = 1.3f
     private val MIRROR_FRONT = true
+
+    private var sessionCreated = false
+
 
     companion object {
         private const val ARG_CLASSID  = "arg_classid"
@@ -137,6 +141,7 @@ class TeacherScanFragment : Fragment() {
 
                     if (now - faceStableStart > 1000 && !isVerifying) {
                         isVerifying = true
+
                         requireActivity().runOnUiThread { progress.visibility = View.VISIBLE }
 
                         val face = faces[0]
@@ -188,8 +193,16 @@ class TeacherScanFragment : Fragment() {
                 isVerifying = false
 
                 if (bestId != null && minDist < DIST_THRESHOLD) {
-                    // ✅ Valid teacher → start session (same as RFID teacher scan)
-                    (requireActivity() as AttendanceActivity).simulateTeacherScan(bestId!!)
+                    isVerifying = true
+
+                    sessionCreated = true
+                    // ✅ Valid teacher recognized
+                    Toast.makeText(requireContext(), "Welcome, $bestName", Toast.LENGTH_SHORT).show()
+
+                    // 🔹 Wait 5 seconds, then navigate to StudentScanFragment
+                    view?.postDelayed({
+                        (requireActivity() as AttendanceActivity).simulateTeacherScan(bestId!!)
+                    }, 2000)
                 } else {
                     Toast.makeText(requireContext(), "You are not a teacher", Toast.LENGTH_SHORT).show()
                 }
@@ -243,4 +256,26 @@ class TeacherScanFragment : Fragment() {
         super.onDestroyView()
         cameraExecutor?.shutdown()
     }
+
+    override fun onResume() {
+        super.onResume()
+
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (sessionCreated) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Cannot go back after session started",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    parentFragmentManager.popBackStack()
+                }
+            }
+        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
+    }
+
+
 }

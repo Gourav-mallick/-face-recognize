@@ -22,6 +22,16 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import org.json.JSONObject
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.login.utility.AutoSyncWorker
+import java.util.concurrent.TimeUnit
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.WorkInfo
+import kotlinx.coroutines.delay
+
 
 class EnrollActivity : AppCompatActivity() {
 
@@ -180,22 +190,44 @@ class EnrollActivity : AppCompatActivity() {
                 return
             }
 
-            // check internet before opening camera
+            // Step 1: Check basic network
             if (!CheckNetworkAndInternetUtils.isNetworkAvailable(this)) {
                 Toast.makeText(this, "No network connection!", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            lifecycleScope.launch(Dispatchers.IO) {
-                val hasInternet = CheckNetworkAndInternetUtils.hasInternetAccess()
-                withContext(Dispatchers.Main) {
-                    if (!hasInternet) {
-                        Toast.makeText(this@EnrollActivity, "No active Internet!", Toast.LENGTH_SHORT).show()
-                        return@withContext
-                    }
-                    val intent = Intent(this@EnrollActivity, CameraCaptureActivity::class.java)
-                    liveCaptureLauncher.launch(intent)
+            lifecycleScope.launch(Dispatchers.Main) {
+                // Step 2: Check internet
+                val hasInternet = withContext(Dispatchers.IO) { CheckNetworkAndInternetUtils.hasInternetAccess() }
+                if (!hasInternet) {
+                    Toast.makeText(this@EnrollActivity, "No active Internet!", Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
+
+                // Step 3: Show progress while syncing
+                val dialog = android.app.AlertDialog.Builder(this@EnrollActivity)
+                    .setTitle("Preparing for Enrollment")
+                    .setMessage("Syncing with server, please wait...")
+                    .setCancelable(false)
+                    .create()
+                dialog.show()
+
+                // Step 4: Run pre-sync (wait until local DB updated)
+                val synced = withContext(Dispatchers.IO) { runPreSyncBeforeEnrollment() }
+                dialog.dismiss()
+
+                if (!synced) {
+                    Toast.makeText(
+                        this@EnrollActivity,
+                        "Sync failed or timed out. Try again later.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+
+                // Step 5: Proceed with face capture only if sync completed
+                val intent = Intent(this@EnrollActivity, CameraCaptureActivity::class.java)
+                liveCaptureLauncher.launch(intent)
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
@@ -383,6 +415,13 @@ class EnrollActivity : AppCompatActivity() {
 
                 if (successStatus.equals("TRUE", ignoreCase = true)) {
                     Toast.makeText(this@EnrollActivity, "Face synced to server!", Toast.LENGTH_LONG).show()
+
+                    // 🔹 Trigger local DB sync automatically
+                    val workRequest = OneTimeWorkRequestBuilder<AutoSyncWorker>()
+                        .setInitialDelay(3, TimeUnit.SECONDS) // Optional delay
+                        .build()
+
+                    WorkManager.getInstance(this@EnrollActivity).enqueue(workRequest)
                 } else {
                     Toast.makeText(this@EnrollActivity, "Server rejected data!", Toast.LENGTH_LONG).show()
                 }
@@ -394,4 +433,47 @@ class EnrollActivity : AppCompatActivity() {
             Log.e("EnrollActivity", "sendFaceToServer error", e)
         }
     }
+
+
+    private suspend fun runPreSyncBeforeEnrollment(): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+
+                val workRequest = OneTimeWorkRequestBuilder<AutoSyncWorker>()
+                    .setConstraints(constraints)
+                    .build()
+
+                // Run unique sync job so we don't start duplicates
+                WorkManager.getInstance(this@EnrollActivity)
+                    .enqueueUniqueWork(
+                        "PreEnrollSync",
+                        ExistingWorkPolicy.KEEP,
+                        workRequest
+                    )
+
+                val workId = workRequest.id
+                var waited = 0
+                while (waited < 30000) { // 30 sec timeout
+                    val info = WorkManager.getInstance(this@EnrollActivity)
+                        .getWorkInfoById(workId).get()
+                    when (info?.state) {
+                        WorkInfo.State.SUCCEEDED -> return@withContext true
+                        WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> return@withContext false
+                        else -> {
+                            delay(500)
+                            waited += 500
+                        }
+                    }
+                }
+                false // timeout
+            } catch (e: Exception) {
+                Log.e("EnrollActivity", "PreSync error: ${e.message}")
+                false
+            }
+        }
+    }
+
 }
