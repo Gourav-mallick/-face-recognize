@@ -55,4 +55,13 @@ interface ApiService {
         @Body requestBody: RequestBody
     ): Response<ResponseBody>
 
+
+    @POST("sims-services/digitalsims/")
+    suspend fun postUserRegistration(
+        @Query("r") r: String = "api/v1/User/updateUserRegistration",
+        @Body body: RequestBody
+    ): Response<ResponseBody>
+
+
+
 }

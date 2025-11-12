@@ -91,7 +91,7 @@ class AttendanceActivity : AppCompatActivity() {
         }
 
         // Restore pending sessions (endTime empty) into activeClasses
-        restorePendingSessions()
+       // restorePendingSessions()
     }
 
     override fun onResume() {
@@ -262,7 +262,7 @@ class AttendanceActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     this@AttendanceActivity,
-                    "Classroom ready: Please scan teacher card.",
+                    "Classroom ready: Awaiting teacher face verification.",
                     Toast.LENGTH_SHORT
                 ).show()
 

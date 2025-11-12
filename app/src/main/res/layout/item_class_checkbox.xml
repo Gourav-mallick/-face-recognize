@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:background="@drawable/bg_gradient"
     android:layout_height="wrap_content"
     android:padding="8dp">
 
@@ -12,7 +13,8 @@
         android:layout_height="wrap_content"
         android:text="Class Name"
         android:textSize="16sp"
-        android:textColor="#000"
+        android:textColor="@color/white"
+        android:buttonTint="@color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"

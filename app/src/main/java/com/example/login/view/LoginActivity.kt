@@ -159,6 +159,7 @@ class LoginActivity : AppCompatActivity() {
                                             for (j in 0 until syearsDataArray.length()) {
                                                 val syearData = syearsDataArray.optJSONObject(j)
                                                 val schoolId = syearData?.optString("schoolId", "No schoolId") ?: "No schoolId"
+                                                val adminUserId= syearData?.optString("userId", "No userId") ?: "No userId"
                                                 val schoolShortName = syearData?.optString("schoolShortName", "No schoolShortName") ?: "No schoolShortName"
                                                 Log.d(TAG, "SCHOOL[$i].SYEAR[$j]: schoolId=$schoolId, schoolShortName=$schoolShortName")
                                                 if (!schoolMap.containsKey(schoolId)) {

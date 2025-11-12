@@ -14,7 +14,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#F9F9F9"
+        android:background="@drawable/bg_gradient"
         android:padding="8dp"
         tools:layout_editor_absoluteX="16dp"
         tools:layout_editor_absoluteY="36dp">
@@ -24,12 +24,11 @@
             android:id="@+id/tvHeader"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="#50C9C3"
             android:gravity="center"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
             android:text="Class-Room Attendance"
-            android:textColor="#000000"
+            android:textColor="@color/white"
             android:textSize="22sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
@@ -81,7 +80,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Resumed Class: -"
-                android:textColor="#2E7DFF"
+                android:textColor="@color/white"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -90,7 +89,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Teacher: -"
-                android:textColor="#333333"
+                android:textColor="@color/white"
                 android:textSize="14sp" />
 
             <TextView
@@ -98,7 +97,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Present Students: 0"
-                android:textColor="#333333"
+                android:textColor="@color/white"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -110,7 +109,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="To Start Attendance - Scan RoomCard"
-            android:textColor="#141313"
+            android:textColor="@color/white"
             android:textSize="18sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -126,7 +125,7 @@
             android:layout_marginStart="20dp"
             android:layout_marginTop="15dp"
             android:text="Last Sync: --"
-            android:textColor="#444"
+            android:textColor="@color/white"
             android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.034"
@@ -142,7 +141,7 @@
             android:gravity="center"
             android:visibility="gone"
             android:text="Pending Unsubmitted Classes: 0"
-            android:textColor="#D32F2F"
+            android:textColor="@color/white"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
             app:layout_constraintEnd_toEndOf="parent"
@@ -155,10 +154,10 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginBottom="204dp"
-            android:background="@drawable/bg_button_gradient"
+            android:background="@color/btn_color"
             android:padding="10sp"
             android:text="Click for strat class"
-            android:textColor="@android:color/white"
+            android:textColor="@color/black"
             android:textSize="14sp"
             app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
             app:layout_constraintEnd_toEndOf="parent"
@@ -183,8 +182,8 @@
                 android:layout_height="40dp"
                 android:text="🔄"
                 android:textSize="18sp"
-                android:background="@drawable/bg_button_gradient"
-                android:textColor="@android:color/white"
+                android:background="@color/btn_color"
+                android:textColor="@color/black"
                 android:layout_gravity="center_vertical" />
 
             <!-- Spacer pushes version to the right -->
@@ -200,8 +199,8 @@
                 android:text="Face Enroll"
                 android:textSize="14sp"
                 android:padding="10dp"
-                android:background="@drawable/bg_button_gradient"
-                android:textColor="@android:color/white"
+                android:background="@color/btn_color"
+                android:textColor="@color/black"
                 android:layout_gravity="center_vertical" />
 
 
@@ -217,7 +216,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="v1.51"
-                android:textColor="@color/black"
+                android:textColor="@color/white"
                 android:textSize="16sp"
                 android:layout_gravity="center_vertical" />
 

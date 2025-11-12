@@ -9,13 +9,19 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.login.R
+import com.example.login.api.ApiClient
+import com.example.login.api.ApiService
 import com.example.login.db.dao.AppDatabase
 import com.example.login.db.entity.Student
 import com.example.login.db.entity.Teacher
+import com.example.login.utility.CheckNetworkAndInternetUtils
 import com.example.login.utility.FaceNetHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType
+import okhttp3.RequestBody
+import org.json.JSONObject
 
 class EnrollActivity : AppCompatActivity() {
 
@@ -36,15 +42,19 @@ class EnrollActivity : AppCompatActivity() {
     private val liveCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val bytes = result.data?.getByteArrayExtra("face_bytes")
-            if (bytes != null) {
-                val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                val embedding = FaceNetHelper(this).getFaceEmbedding(bmp)
-
-                val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
-                saveFace(id!!, embedding)
+        try {
+            if (result.resultCode == RESULT_OK) {
+                val bytes = result.data?.getByteArrayExtra("face_bytes")
+                if (bytes != null) {
+                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    val embedding = FaceNetHelper(this).getFaceEmbedding(bmp)
+                    val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
+                    if (id != null) saveFace(id, embedding)
+                }
             }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error during face capture: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("EnrollActivity", "Face capture error", e)
         }
     }
 
@@ -62,32 +72,33 @@ class EnrollActivity : AppCompatActivity() {
         btnEnrollFace = findViewById(R.id.btnEnrollFace)
 
         btnSearch.setOnClickListener { searchUser() }
-
         btnEnrollFace.setOnClickListener { handleActionClick() }
     }
 
-    // --------------------------------------------------------
-    // SEARCH USER (Student / Teacher)
-    // --------------------------------------------------------
     private fun searchUser() {
-        val enteredId = editSearchId.text.toString().trim()
-        if (enteredId.isEmpty()) {
-            Toast.makeText(this, "Enter an ID to search!", Toast.LENGTH_SHORT).show()
-            return
-        }
+        try {
+            val enteredId = editSearchId.text.toString().trim()
+            if (enteredId.isEmpty()) {
+                Toast.makeText(this, "Enter an ID to search!", Toast.LENGTH_SHORT).show()
+                return
+            }
 
-        val userType = selectedUserType()
-        when (userType) {
-            "student" -> searchStudentById(enteredId)
-            "teacher" -> searchTeacherById(enteredId)
-            else -> Toast.makeText(this, "Select user type first!", Toast.LENGTH_SHORT).show()
+            val userType = selectedUserType()
+            when (userType) {
+                "student" -> searchStudentById(enteredId)
+                "staff" -> searchTeacherById(enteredId)
+                else -> Toast.makeText(this, "Select user type first!", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("EnrollActivity", "searchUser error", e)
         }
     }
 
     private fun selectedUserType(): String {
         return when (radioUserType.checkedRadioButtonId) {
             R.id.rbStudent -> "student"
-            R.id.rbTeacher -> "teacher"
+            R.id.rbStaff -> "staff"
             else -> "none"
         }
     }
@@ -103,232 +114,284 @@ class EnrollActivity : AppCompatActivity() {
 
     private fun searchStudentById(id: String) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(this@EnrollActivity)
-            val student = db.studentsDao().getStudentById(id)
+            try {
+                val db = AppDatabase.getDatabase(this@EnrollActivity)
+                val student = db.studentsDao().getStudentById(id)
 
-            withContext(Dispatchers.Main) {
-                if (student == null) {
-                    Toast.makeText(this@EnrollActivity, "Student not found!", Toast.LENGTH_SHORT).show()
-                    selectedStudent = null
-                    editName.setText("")
-                } else {
-                    selectedStudent = student
-                    selectedTeacher = null
-                    editName.setText("${student.studentId} - ${student.studentName}")
+                withContext(Dispatchers.Main) {
+                    if (student == null) {
+                        Toast.makeText(this@EnrollActivity, "Student not found!", Toast.LENGTH_SHORT).show()
+                        selectedStudent = null
+                        editName.setText("")
+                    } else {
+                        selectedStudent = student
+                        selectedTeacher = null
+                        editName.setText("${student.studentId} - ${student.studentName}")
+                    }
                 }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@EnrollActivity, "Error searching student: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+                Log.e("EnrollActivity", "searchStudentById error", e)
             }
         }
     }
 
     private fun searchTeacherById(id: String) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(this@EnrollActivity)
-            val teacher = db.teachersDao().getTeacherById(id)
+            try {
+                val db = AppDatabase.getDatabase(this@EnrollActivity)
+                val teacher = db.teachersDao().getTeacherById(id)
 
-            withContext(Dispatchers.Main) {
-                if (teacher == null) {
-                    Toast.makeText(this@EnrollActivity, "Teacher not found!", Toast.LENGTH_SHORT).show()
-                    selectedTeacher = null
-                    editName.setText("")
-                } else {
-                    selectedTeacher = teacher
-                    selectedStudent = null
-                    editName.setText("${teacher.staffId} - ${teacher.staffName}")
+                withContext(Dispatchers.Main) {
+                    if (teacher == null) {
+                        Toast.makeText(this@EnrollActivity, "Teacher not found!", Toast.LENGTH_SHORT).show()
+                        selectedTeacher = null
+                        editName.setText("")
+                    } else {
+                        selectedTeacher = teacher
+                        selectedStudent = null
+                        editName.setText("${teacher.staffId} - ${teacher.staffName}")
+                    }
                 }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@EnrollActivity, "Error searching teacher: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+                Log.e("EnrollActivity", "searchTeacherById error", e)
             }
         }
     }
 
-    // --------------------------------------------------------
-    // ACTION BUTTON CLICK (Add / Update / Delete)
-    // --------------------------------------------------------
     private fun handleActionClick() {
-        val userFound = selectedStudent != null || selectedTeacher != null
-        if (!userFound) {
-            Toast.makeText(this, "Search user first!", Toast.LENGTH_SHORT).show()
-            return
+        try {
+            val userFound = selectedStudent != null || selectedTeacher != null
+            if (!userFound) {
+                Toast.makeText(this, "Search user first!", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val action = selectedActionType()
+
+            if (action == "delete") {
+                val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
+                if (id != null) saveFace(id, null)
+                return
+            }
+
+            // check internet before opening camera
+            if (!CheckNetworkAndInternetUtils.isNetworkAvailable(this)) {
+                Toast.makeText(this, "No network connection!", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            lifecycleScope.launch(Dispatchers.IO) {
+                val hasInternet = CheckNetworkAndInternetUtils.hasInternetAccess()
+                withContext(Dispatchers.Main) {
+                    if (!hasInternet) {
+                        Toast.makeText(this@EnrollActivity, "No active Internet!", Toast.LENGTH_SHORT).show()
+                        return@withContext
+                    }
+                    val intent = Intent(this@EnrollActivity, CameraCaptureActivity::class.java)
+                    liveCaptureLauncher.launch(intent)
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("EnrollActivity", "handleActionClick error", e)
         }
-
-        val action = selectedActionType()
-
-        // DELETE does not need camera
-        if (action == "delete") {
-            val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
-            saveFace(id!!, null)
-            return
-        }
-
-        // ADD or UPDATE capture new face
-        val intent = Intent(this, CameraCaptureActivity::class.java)
-        liveCaptureLauncher.launch(intent)
     }
 
-    // --------------------------------------------------------
-    // SAVE FACE (Add / Update / Delete)
-    // --------------------------------------------------------
     private fun saveFace(id: String, embedding: FloatArray?) {
-        val db = AppDatabase.getDatabase(this)
-        val embedStr = embedding?.joinToString(",")
-
-        val userType = selectedUserType()
-        val action = selectedActionType()
-
         lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // check connection before server call
+                if (!CheckNetworkAndInternetUtils.isNetworkAvailable(this@EnrollActivity)) {
+                    showMainToast("No network connection!")
+                    return@launch
+                }
+                if (!CheckNetworkAndInternetUtils.hasInternetAccess()) {
+                    showMainToast("No internet access!")
+                    return@launch
+                }
 
-            val student = if (userType == "student") db.studentsDao().getStudentById(id) else null
-            val teacher = if (userType == "teacher") db.teachersDao().getTeacherById(id) else null
+                val db = AppDatabase.getDatabase(this@EnrollActivity)
+                val embedStr = embedding?.joinToString(",")
+                val userType = selectedUserType()
+                val action = selectedActionType()
 
-            val existingEmbedding = student?.embedding ?: teacher?.embedding
+                val student = if (userType == "student") db.studentsDao().getStudentById(id) else null
+                val teacher = if (userType == "staff") db.teachersDao().getTeacherById(id) else null
 
+                val existingEmbedding = student?.embedding ?: teacher?.embedding
 
-            // --------------------------------------------------------
-            // ✅ 1. Face duplicate detection (Euclidean distance)
-            // --------------------------------------------------------
-            if (embedding != null && (action == "add" || action == "update")) {
-
-                val match = detectMatchingFace(embedding)
-
-                if (match != null) {
-                    val (type, name, matchedId) = match
-
-                    // ✅ CASE 1: Face belongs to someone else → BLOCK
-                    if (matchedId != id) {
-                        showMainToast("Face already belongs to $type $name")
-                        return@launch
-                    }
-
-                    // ✅ CASE 2: Face belongs to SAME user → allowed for UPDATE
-                    if (action == "add") {
-                        showMainToast("This user already has a face. Use Update instead.")
-                        return@launch
+                if (embedding != null && (action == "add" || action == "update")) {
+                    val match = detectMatchingFace(embedding)
+                    if (match != null) {
+                        val (type, name, matchedId) = match
+                        if (matchedId != id) {
+                            showMainToast("Enroll already belongs to $type $name")
+                            return@launch
+                        }
+                        if (action == "add") {
+                            showMainToast("This user already has an Enroll. Use Update instead.")
+                            return@launch
+                        }
                     }
                 }
+
+                when (action) {
+                    "add" -> {
+                        if (!existingEmbedding.isNullOrEmpty()) {
+                            showMainToast("Face already exists. Use Update instead.")
+                            return@launch
+                        }
+                        if (embedding == null) return@launch
+                        sendFaceToServer(id, userType, embedStr)
+                    }
+
+                    "update" -> {
+                        if (existingEmbedding.isNullOrEmpty()) {
+                            showMainToast("No existing face found. Use Add instead.")
+                            return@launch
+                        }
+                        if (embedding == null) return@launch
+                        val storedEmbedding = existingEmbedding.split(",").map { it.toFloat() }.toFloatArray()
+                        val distSelf = FaceNetHelper(this@EnrollActivity)
+                            .calculateDistance(storedEmbedding, embedding)
+                        if (distSelf >= DIST_THRESHOLD) {
+                            showMainToast("Face does not match the existing face.")
+                            return@launch
+                        }
+                        sendFaceToServer(id, userType, embedStr)
+                    }
+
+                    "delete" -> {
+                        showMainToast("Delete logic placeholder.")
+                    }
+                }
+
+                val updated =
+                    if (userType == "student") db.studentsDao().getStudentById(id)
+                    else db.teachersDao().getTeacherById(id)
+
+                Log.d("EnrollActivity", "Updated Record → $updated")
+                showMainToast("Action $action completed successfully.")
+            } catch (e: Exception) {
+                Log.e("EnrollActivity", "saveFace error", e)
+                showMainToast("Error: ${e.message}")
             }
-
-
-
-            // --------------------------------------------------------
-            // ✅ 2. Add / Update / Delete logic
-            // --------------------------------------------------------
-            when (action) {
-
-                // ADD
-                "add" -> {
-                    if (!existingEmbedding.isNullOrEmpty()) {
-                        showMainToast("Face already exists. Use Update instead.")
-                        return@launch
-                    }
-                    if (embedding == null) return@launch
-
-                    if (userType == "student")
-                        db.studentsDao().updateStudentEmbedding(id, embedStr!!)
-                    else
-                        db.teachersDao().updateTeacherEmbedding(id, embedStr!!)
-                }
-
-                // ✅ SECURE UPDATE: only same person can update
-                "update" -> {
-
-                    if (existingEmbedding.isNullOrEmpty()) {
-                        showMainToast("No existing face found. Use Add instead.")
-                        return@launch
-                    }
-                    if (embedding == null) return@launch
-
-                    // 1. Compare captured face with the user's own stored face
-                    val storedEmbedding = existingEmbedding.split(",").map { it.toFloat() }.toFloatArray()
-                    val distSelf = FaceNetHelper(this@EnrollActivity).calculateDistance(storedEmbedding, embedding)
-
-                    // If not same person → block update
-                    if (distSelf >= DIST_THRESHOLD) {
-                        showMainToast("Face does not match the user's existing face. Update blocked.")
-                        return@launch
-                    }
-
-                    // 2. Safe: update with new embedding
-                    if (userType == "student")
-                        db.studentsDao().updateStudentEmbedding(id, embedStr!!)
-                    else
-                        db.teachersDao().updateTeacherEmbedding(id, embedStr!!)
-                }
-
-
-                // DELETE
-                "delete" -> {
-                    if (existingEmbedding.isNullOrEmpty()) {
-                        showMainToast("No embedding to delete.")
-                        return@launch
-                    }
-
-                    if (userType == "student")
-                        db.studentsDao().updateStudentEmbedding(id, "")
-                    else
-                        db.teachersDao().updateTeacherEmbedding(id, "")
-                }
-            }
-
-
-            // --------------------------------------------------------
-            // ✅ 3. Log updated record
-            // --------------------------------------------------------
-            val updated =
-                if (userType == "student") db.studentsDao().getStudentById(id)
-                else db.teachersDao().getTeacherById(id)
-
-            Log.d("EnrollActivity", "Updated Record → $updated")
-
-            showMainToast("Action $action completed successfully.")
         }
     }
 
     private suspend fun showMainToast(msg: String) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(this@EnrollActivity, msg, Toast.LENGTH_LONG).show()
+            Toast.makeText(this@EnrollActivity, msg, Toast.LENGTH_SHORT).show()
         }
     }
-
 
     private suspend fun detectMatchingFace(
         newEmbedding: FloatArray,
         threshold: Float = 0.80f
     ): Triple<String, String, String>? {
+        return try {
+            val db = AppDatabase.getDatabase(this)
+            val faceNet = FaceNetHelper(this)
 
-        val db = AppDatabase.getDatabase(this)
-        val faceNet = FaceNetHelper(this)
+            var minDist = Float.MAX_VALUE
+            var matchType = ""
+            var matchName = ""
+            var matchId = ""
 
-        var minDist = Float.MAX_VALUE
-        var matchType = ""
-        var matchName = ""
-        var matchId = ""
-
-        // Check Students
-        val students = db.studentsDao().getAllStudents().filter { !it.embedding.isNullOrEmpty() }
-        for (s in students) {
-            val stored = s.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
-            val dist = faceNet.calculateDistance(stored, newEmbedding)
-            if (dist < minDist) {
-                minDist = dist
-                matchType = "student"
-                matchName = s.studentName
-                matchId = s.studentId
+            val students = db.studentsDao().getAllStudents().filter { !it.embedding.isNullOrEmpty() }
+            for (s in students) {
+                val stored = s.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
+                val dist = faceNet.calculateDistance(stored, newEmbedding)
+                if (dist < minDist) {
+                    minDist = dist
+                    matchType = "student"
+                    matchName = s.studentName
+                    matchId = s.studentId
+                }
             }
-        }
 
-        // Check Teachers
-        val teachers = db.teachersDao().getAllTeachers().filter { !it.embedding.isNullOrEmpty() }
-        for (t in teachers) {
-            val stored = t.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
-            val dist = faceNet.calculateDistance(stored, newEmbedding)
-            if (dist < minDist) {
-                minDist = dist
-                matchType = "teacher"
-                matchName = t.staffName
-                matchId = t.staffId
+            val teachers = db.teachersDao().getAllTeachers().filter { !it.embedding.isNullOrEmpty() }
+            for (t in teachers) {
+                val stored = t.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
+                val dist = faceNet.calculateDistance(stored, newEmbedding)
+                if (dist < minDist) {
+                    minDist = dist
+                    matchType = "teacher"
+                    matchName = t.staffName
+                    matchId = t.staffId
+                }
             }
+            if (minDist < threshold) Triple(matchType, matchName, matchId) else null
+        } catch (e: Exception) {
+            Log.e("EnrollActivity", "detectMatchingFace error", e)
+            null
         }
-
-        return if (minDist < threshold) Triple(matchType, matchName, matchId) else null
     }
 
+    private suspend fun sendFaceToServer(
+        id: String,
+        userType: String,
+        embeddingStr: String?
+    ) {
+        val json = """
+        {
+          "userRegParamData": {
+            "userType": "$userType",
+            "registrationType": "FingerPrint",
+            "regParamData": [
+              {
+                "userId": "$id",
+                "metricType": "finger",
+                "fingerType": "Biometric",
+                "template": "${embeddingStr ?: ""}"
+              }
+            ]
+          }
+        }
+        """.trimIndent()
 
+        try {
+            val mediaType = MediaType.parse("application/json; charset=utf-8")
+            val requestBody = RequestBody.create(mediaType, json)
+            val baseUrl = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
+                .getString("baseUrl", "https://testvps.digitaledu.in/")!!
+            val hash = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
+                .getString("hash", null)
+            val api = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
+            val response = api.postUserRegistration(body = requestBody)
+            Log.d("EnrollActivity", "Response: $response")
+
+            withContext(Dispatchers.Main) {
+                if (!response.isSuccessful) {
+                    Toast.makeText(this@EnrollActivity, "HTTP error: ${response.code()}", Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
+
+                val bodyStr = response.body()?.string() ?: ""
+                Log.d("EnrollActivity", "Response body: $bodyStr")
+
+                val jsonObj = JSONObject(bodyStr)
+                val collection = jsonObj.optJSONObject("collection")
+                val resp = collection?.optJSONObject("response")
+                val successStatus = resp?.optString("successStatus", "FALSE") ?: "FALSE"
+
+                if (successStatus.equals("TRUE", ignoreCase = true)) {
+                    Toast.makeText(this@EnrollActivity, "Face synced to server!", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@EnrollActivity, "Server rejected data!", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@EnrollActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+            Log.e("EnrollActivity", "sendFaceToServer error", e)
+        }
+    }
 }

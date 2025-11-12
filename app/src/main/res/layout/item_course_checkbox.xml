@@ -4,6 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_gradient"
     android:padding="8dp">
 
     <CheckBox
@@ -11,6 +12,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Course Title"
+        android:textColor="@color/white"
+        android:buttonTint="@color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
