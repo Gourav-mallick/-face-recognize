@@ -19,7 +19,8 @@ import java.util.concurrent.TimeUnit
 class AutoSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val prefs = applicationContext.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val context = applicationContext
+        val prefs = context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
         val baseUrl = prefs.getString("baseUrl", "") ?: ""
         val instIds = prefs.getString("selectedInstituteIds", "") ?: ""
         val HASH = "trr36pdthb9xbhcppyqkgbpkq"
@@ -86,7 +87,9 @@ class AutoSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     private fun sendBroadcastUpdate(context: Context) {
-        val intent = Intent("SYNC_UPDATE")
+        val prefs = applicationContext.getSharedPreferences("SyncPrefs", Context.MODE_PRIVATE)
+        val time = prefs.getString("last_sync_time", "") ?: ""
+        val intent = Intent("SYNC_UPDATE").putExtra("time", time)
         context.sendBroadcast(intent)
     }
 }

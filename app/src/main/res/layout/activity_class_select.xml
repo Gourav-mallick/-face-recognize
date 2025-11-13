@@ -45,7 +45,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Continue"
-                android:background="@color/btn_color"
+                android:background="@drawable/btn_rounded"
                 android:textColor="@android:color/black"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="12dp" />

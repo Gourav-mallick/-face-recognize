@@ -23,11 +23,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetectorOptions
 
 class StudentScanFragment : Fragment() {
 
@@ -42,6 +43,12 @@ class StudentScanFragment : Fragment() {
     private lateinit var tvLastStudent: TextView
     private lateinit var tvInstruction: TextView
     private lateinit var tvLatestCardTapStudentLabel: TextView
+    private var prevFace: com.google.mlkit.vision.face.Face? = null
+    // Blink detection variables
+    private var lastLeftProb = -1f
+    private var lastRightProb = -1f
+    private var blinkDetected = false
+
 
     // Args
     private var teacherNameArg = ""
@@ -140,9 +147,21 @@ class StudentScanFragment : Fragment() {
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
+    private val detector by lazy {
+        FaceDetection.getClient(
+            FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                .build()
+        )
+    }
+
+
+
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 300) {
+        if (now - lastProcessTime < 100) {
             imageProxy.close()
             return
         }
@@ -154,13 +173,6 @@ class StudentScanFragment : Fragment() {
 
             val image = com.google.mlkit.vision.common.InputImage.fromBitmap(displayBmp, 0)
 
-            val detector = com.google.mlkit.vision.face.FaceDetection.getClient(
-                com.google.mlkit.vision.face.FaceDetectorOptions.Builder()
-                    .setPerformanceMode(
-                        com.google.mlkit.vision.face.FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE
-                    ).build()
-            )
-
             detector.process(image)
                 .addOnSuccessListener { faces ->
                     if (faces.isEmpty()) {
@@ -168,6 +180,15 @@ class StudentScanFragment : Fragment() {
                         faceStableStart = 0L
                     } else {
                         val face = faces[0]
+                        // 🔹 LIVENESS CHECK (eye open probability)
+                        if (!isLiveFace(face, prevFace)) {
+                            faceGuide.background.setTint(Color.RED)
+                            faceStableStart = 0L
+                            prevFace = face
+                            return@addOnSuccessListener
+                        }
+
+
                         val rect = face.boundingBox
 
                         val isCentered = kotlin.math.abs(rect.centerX() - displayBmp.width / 2) < rect.width() * 0.3 &&
@@ -181,11 +202,17 @@ class StudentScanFragment : Fragment() {
                             if (elapsed >= 800 && !isVerifying) {
                                 isVerifying = true
 
-                                val cropped = cropWithScale(displayBmp, face.boundingBox, CROP_SCALE)
-                                val embedding = faceNet.getFaceEmbedding(cropped)
+                                lifecycleScope.launch(Dispatchers.Default) {
 
-                                verifyFace(embedding)
-                                faceStableStart = 0L
+                                    val cropped = cropWithScale(displayBmp, face.boundingBox, CROP_SCALE)
+                                    val embedding = faceNet.getFaceEmbedding(cropped)
+
+                                    withContext(Dispatchers.Main) {
+                                        verifyFace(embedding)
+                                        faceStableStart = 0L
+                                        isVerifying = false
+                                    }
+                                }
                             }
                         } else {
                             faceGuide.background.setTint(Color.RED)
@@ -335,7 +362,7 @@ class StudentScanFragment : Fragment() {
                             }
                         }
                     } else {
-                        toast("Different teacher — ignored")
+                        toast("Different teacher Detected ")
                     }
 
                     done()
@@ -391,7 +418,11 @@ class StudentScanFragment : Fragment() {
     // -----------------------------------------------------------------------
     // SMALL UTILITIES
     // -----------------------------------------------------------------------
-    private fun done() { isVerifying = false }
+    private fun done() {
+        isVerifying = false
+        blinkDetected = false
+    }
+
 
     private fun toast(msg: String) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
@@ -455,4 +486,51 @@ class StudentScanFragment : Fragment() {
 
         return Bitmap.createBitmap(bmp, x, y, w, h)
     }
+
+
+    private fun isLiveFace(
+        face: com.google.mlkit.vision.face.Face,
+        prevFace: com.google.mlkit.vision.face.Face?
+    ): Boolean {
+
+        val left = face.leftEyeOpenProbability ?: -1f
+        val right = face.rightEyeOpenProbability ?: -1f
+
+        Log.d("BLINK_DEBUG_STUDENT", "Left=$left Right=$right")
+
+        // ------------ 1) REAL BLINK DETECTION ------------
+        if (left >= 0 && right >= 0) {
+
+            val eyesWereOpen = lastLeftProb > 0.6f && lastRightProb > 0.6f
+            val eyesNowClosed = left < 0.3f && right < 0.3f
+
+            // detect blink: open → closed
+            if (eyesWereOpen && eyesNowClosed) {
+                blinkDetected = true
+                Log.d("BLINK_DEBUG_STUDENT", "Blink detected on student!")
+            }
+
+            lastLeftProb = left
+            lastRightProb = right
+        }
+
+        // require 1 blink before considering liveness
+        if (!blinkDetected) {
+            return false
+        }
+
+        // ------------ 2) MOTION LIVENESS ------------
+        if (prevFace != null) {
+            val moveX = kotlin.math.abs(face.boundingBox.centerX() - prevFace.boundingBox.centerX())
+            val moveY = kotlin.math.abs(face.boundingBox.centerY() - prevFace.boundingBox.centerY())
+
+            if (moveX < 1 && moveY < 1) {
+                return false // still → printed photo
+            }
+        }
+
+        return true
+    }
+
+
 }

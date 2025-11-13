@@ -222,7 +222,7 @@ class SubjectSelectActivity : ComponentActivity() {
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
 
-                   // ✅ Delay clearing prefs slightly to prevent race condition
+                   // Delay clearing prefs slightly to prevent race condition
                         lifecycleScope.launch {
                             kotlinx.coroutines.delay(500)
                             getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
@@ -269,7 +269,7 @@ class SubjectSelectActivity : ComponentActivity() {
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
 
-                      // ✅ Delay clearing prefs slightly to prevent race condition
+                      //  Delay clearing prefs slightly to prevent race condition
                         lifecycleScope.launch {
                             kotlinx.coroutines.delay(500)
                             getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
@@ -282,7 +282,7 @@ class SubjectSelectActivity : ComponentActivity() {
                     }
                 }
 
-                // ✅ Optional: Log final attendance
+                //  Optional: Log final attendance
                 val allAttendance = db.attendanceDao().getAllAttendance()
                 for (record in allAttendance) {
                     Log.d(

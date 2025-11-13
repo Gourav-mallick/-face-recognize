@@ -62,7 +62,7 @@
             android:id="@+id/btnSyncNow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/btn_color"
+            android:background="@drawable/btn_rounded"
             android:elevation="4dp"
             android:paddingHorizontal="32dp"
             android:paddingVertical="12dp"

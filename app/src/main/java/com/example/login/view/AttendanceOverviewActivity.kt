@@ -304,9 +304,9 @@ class AttendanceOverviewActivity : ComponentActivity() {
             .setCancelable(false)
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
-                // ✅ Clear all saved states before restarting
-                getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
-                getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+                // Use commit() instead of apply() to make it synchronous
+                getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().commit()
+                getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().commit()
 
                 val intent = Intent(this@AttendanceOverviewActivity, AttendanceActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)

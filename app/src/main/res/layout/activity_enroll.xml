@@ -129,7 +129,7 @@
                 <Button
                     android:id="@+id/btnSearch"
                     android:text="Search"
-                    android:background="@color/btn_color"
+                    android:background="@drawable/bg_button_gradient"
                     android:textColor="@color/black"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
@@ -149,7 +149,7 @@
             <Button
                 android:id="@+id/btnEnrollFace"
                 android:text="Enroll Face"
-                android:background="@color/btn_color"
+                android:background="@drawable/btn_rounded"
                 android:textColor="@color/black"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>

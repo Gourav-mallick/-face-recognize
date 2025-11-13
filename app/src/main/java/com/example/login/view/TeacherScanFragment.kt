@@ -1,6 +1,7 @@
 package com.example.login.view
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.os.Bundle
@@ -44,6 +45,12 @@ class TeacherScanFragment : Fragment() {
     private var faceStableStart = 0L
     private var isVerifying = false
     private var lastProcessTime = 0L
+    private var prevFace: com.google.mlkit.vision.face.Face? = null
+    private var lastLeftProb = -1f
+    private var lastRightProb = -1f
+    private var blinkDetected = false
+
+
 
     private val DIST_THRESHOLD = 0.80f     // keep same as activity
     private val CROP_SCALE = 1.3f
@@ -63,9 +70,12 @@ class TeacherScanFragment : Fragment() {
         FaceDetection.getClient(
             FaceDetectorOptions.Builder()
                 .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL) // 🔥 Required!
                 .build()
         )
     }
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?)
             = inflater.inflate(R.layout.fragment_teacher_scan, container, false)
@@ -114,7 +124,7 @@ class TeacherScanFragment : Fragment() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 350) {
+        if (now - lastProcessTime < 100) {
             imageProxy.close(); return
         }
         lastProcessTime = now
@@ -136,6 +146,17 @@ class TeacherScanFragment : Fragment() {
         detector.process(image)
             .addOnSuccessListener { faces ->
                 if (faces.isNotEmpty()) {
+
+                    val face = faces[0]   // ← moved here before liveness check
+
+                    // 🔹 LIVENESS CHECK (Eye open probability)
+                    if (!isLiveFace(face,prevFace)) {
+                        faceGuide.background.setTint(Color.RED)
+                        faceStableStart = 0L
+                        prevFace = face
+                        return@addOnSuccessListener
+                    }
+
                     faceGuide.background.setTint(Color.GREEN)
                     if (faceStableStart == 0L) faceStableStart = now
 
@@ -144,7 +165,7 @@ class TeacherScanFragment : Fragment() {
 
                         requireActivity().runOnUiThread { progress.visibility = View.VISIBLE }
 
-                        val face = faces[0]
+                       // val face = faces[0]
                         val cropped = cropWithScale(prepared, face.boundingBox, CROP_SCALE)
                         val embedding = faceNet.getFaceEmbedding(cropped)
 
@@ -255,6 +276,11 @@ class TeacherScanFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         cameraExecutor?.shutdown()
+        if (!sessionCreated) {
+            // Clear saved screen only if no session was started
+            val prefs = requireContext().getSharedPreferences("APP_STATE", Context.MODE_PRIVATE)
+            prefs.edit().remove("CURRENT_SCREEN").apply()
+        }
     }
 
     override fun onResume() {
@@ -269,6 +295,11 @@ class TeacherScanFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
+                    // ✅ Clear saved screen if no session started
+                    val prefs = requireContext().getSharedPreferences("APP_STATE", Context.MODE_PRIVATE)
+                    prefs.edit().remove("CURRENT_SCREEN").apply()
+
+                    // ✅ Navigate back to classroom
                     parentFragmentManager.popBackStack()
                 }
             }
@@ -276,6 +307,49 @@ class TeacherScanFragment : Fragment() {
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
     }
+
+    private fun isLiveFace(face: com.google.mlkit.vision.face.Face, prevFace: com.google.mlkit.vision.face.Face?): Boolean {
+
+        val left = face.leftEyeOpenProbability ?: -1f
+        val right = face.rightEyeOpenProbability ?: -1f
+
+        Log.d("BLINK_DEBUG", "Left=$left Right=$right")
+
+        // ----- 1) REAL BLINK DETECTION -----
+        if (left >= 0 && right >= 0) {
+
+            val eyesWereOpen = lastLeftProb > 0.6f && lastRightProb > 0.6f
+            val eyesNowClosed = left < 0.3f && right < 0.3f
+
+            // BLINK event: open → closed
+            if (eyesWereOpen && eyesNowClosed) {
+                blinkDetected = true
+                Log.d("BLINK_DEBUG", "Blink DETECTED!")
+            }
+
+            lastLeftProb = left
+            lastRightProb = right
+        }
+
+        // REQUIRE blink for liveness
+        if (!blinkDetected) {
+            return false
+        }
+
+        // ----- 2) MOTION LIVENESS -----
+        if (prevFace != null) {
+            val moveX = kotlin.math.abs(face.boundingBox.centerX() - prevFace.boundingBox.centerX())
+            val moveY = kotlin.math.abs(face.boundingBox.centerY() - prevFace.boundingBox.centerY())
+
+            if (moveX < 1 && moveY < 1) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+
 
 
 }

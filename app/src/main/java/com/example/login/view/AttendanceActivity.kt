@@ -42,13 +42,13 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-
+import androidx.work.OneTimeWorkRequest
 
 
 class AttendanceActivity : AppCompatActivity() {
 
-    private  var nfcAdapter: NfcAdapter? = null
-    private lateinit var pendingIntent: PendingIntent
+ //   private  var nfcAdapter: NfcAdapter? = null
+  //  private lateinit var pendingIntent: PendingIntent
     private val TAG = "NFC_DEBUG"
 
 
@@ -95,6 +95,9 @@ class AttendanceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_attendance)
 
+        WorkManager.getInstance(this)
+            .enqueue(OneTimeWorkRequest.from(AutoSyncWorker::class.java))
+
         // 🔹 Check camera permission on app start
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {
@@ -109,7 +112,17 @@ class AttendanceActivity : AppCompatActivity() {
 
         // 🔹 Restore screen if app was killed mid-session
         val statePrefs = getSharedPreferences("APP_STATE", MODE_PRIVATE)
-        when (statePrefs.getString("CURRENT_SCREEN", null)) {
+
+        // ✅ If cleared or missing, always start fresh
+        val currentScreen = statePrefs.getString("CURRENT_SCREEN", null)
+        if (currentScreen.isNullOrEmpty()) {
+            val frag = ClassroomScanFragment.newInstance()
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, frag, "CLASSROOM")
+                .commit()
+            return
+        }
+        when (currentScreen) {
             "TEACHER_SCAN" -> {
                 val classId = statePrefs.getString("CLASSROOM_ID", "")
                 val frag = TeacherScanFragment.newInstance(classId!!)
@@ -150,7 +163,7 @@ class AttendanceActivity : AppCompatActivity() {
         // Restore pending sessions (endTime empty) into activeClasses
        restorePendingSessions()
     }
-
+/*
     override fun onResume() {
         super.onResume()
 
@@ -304,7 +317,7 @@ class AttendanceActivity : AppCompatActivity() {
         }
     }
 
-
+ */
     // ----------------- Scan: Classroom -----------------
     private fun handleClassScan(classroomId: String, classroomName: String) {
         lifecycleScope.launch {
@@ -497,6 +510,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 syncStatus = "pending",
                 periodId = ""
             )
+            Log.d("SESSION_DEBUG", "Session: $session")
             db.sessionDao().insertSession(session)
 
             val newCycle = AttendanceCycle(
@@ -639,8 +653,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
 
     // ----------------- End Class -----------------
-    private fun
-            showEndClassDialog(classroomId: String) {
+    private fun showEndClassDialog(classroomId: String) {
         val teacherId = currentTeacherId ?: return
         val cycle = activeSessions[Pair(classroomId, teacherId)] ?: return
         lifecycleScope.launch {
@@ -708,7 +721,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             transaction.commit()
         }
     }
-
+/*
     private fun hexStringToByteArray(s: String): ByteArray {
         val len = s.length
         require(len % 2 == 0) { "Hex string must have even length" }
@@ -722,6 +735,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
         return data
     }
 
+ */
     private fun checkDeviceTime(onChecked: (() -> Unit)? = null) {
         if (!isNetworkAvailable()) {
             onChecked?.invoke() // skip check if offline

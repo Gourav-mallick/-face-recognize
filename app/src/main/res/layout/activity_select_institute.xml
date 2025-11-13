@@ -88,7 +88,7 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:text="Sync Data"
-            android:background="@color/btn_color"
+            android:background="@drawable/btn_rounded"
             android:textColor="@color/black"
             android:textStyle="bold"
             android:textAllCaps="false"
