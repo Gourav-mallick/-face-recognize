@@ -236,7 +236,8 @@ class StudentScanFragment : Fragment() {
 
             val session = db.sessionDao().getSessionById(sessionIdArg)
             if (session == null) {
-                done(); toast("Invalid session")
+                done()
+                toast("Invalid session")
                 return@launch
             }
 
@@ -416,11 +417,14 @@ class StudentScanFragment : Fragment() {
 
 
     // -----------------------------------------------------------------------
-    // SMALL UTILITIES
+    // SMALL UTILITIES for Reset eye probabilities when face changes
     // -----------------------------------------------------------------------
     private fun done() {
         isVerifying = false
         blinkDetected = false
+        lastLeftProb = -1f        //  reset
+        lastRightProb = -1f       //  reset
+        prevFace = null           //  reset motion reference
     }
 
 

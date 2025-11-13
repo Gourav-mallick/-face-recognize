@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient">
 
+    <!-- MAIN SCROLLABLE UI -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -109,6 +111,7 @@
                     android:layout_height="wrap_content"/>
             </RadioGroup>
 
+            <!-- SEARCH ROW -->
             <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
@@ -117,7 +120,7 @@
 
                 <EditText
                     android:id="@+id/editSearchId"
-                    android:hint="Enter ID"
+                    android:hint="Search by name"
                     android:textColor="@color/white"
                     android:textColorHint="#80839B"
                     android:backgroundTint="#4C63FF"
@@ -126,18 +129,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"/>
 
-                <Button
-                    android:id="@+id/btnSearch"
-                    android:text="Search"
-                    android:background="@drawable/bg_button_gradient"
-                    android:textColor="@color/black"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+
             </LinearLayout>
 
             <EditText
                 android:id="@+id/editName"
-                android:hint="ID - Name"
+                android:hint="Display name"
                 android:textColor="#FFFFFF"
                 android:textColorHint="#80839B"
                 android:backgroundTint="#4C63FF"
@@ -153,7 +150,21 @@
                 android:textColor="@color/black"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
-
         </LinearLayout>
     </ScrollView>
+
+    <!-- FLOATING DROPDOWN LIST -->
+    <ListView
+        android:id="@+id/listUsers"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="120dp"
+        android:background="#FFFFFF"
+        android:elevation="12dp"
+        android:padding="6dp"
+        android:visibility="gone"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="1dp"/>
 </FrameLayout>

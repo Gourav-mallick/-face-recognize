@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -31,6 +32,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.WorkInfo
 import kotlinx.coroutines.delay
+import androidx.core.widget.addTextChangedListener
 
 
 class EnrollActivity : AppCompatActivity() {
@@ -39,7 +41,6 @@ class EnrollActivity : AppCompatActivity() {
     private lateinit var radioActionType: RadioGroup
 
     private lateinit var editSearchId: EditText
-    private lateinit var btnSearch: Button
 
     private lateinit var editName: EditText
     private lateinit var btnEnrollFace: Button
@@ -48,6 +49,14 @@ class EnrollActivity : AppCompatActivity() {
     private var selectedTeacher: Teacher? = null
 
     private val DIST_THRESHOLD = 0.80f
+
+    private lateinit var listUsers: ListView
+    private lateinit var adapter: ArrayAdapter<String>
+
+    private var allStudents = listOf<Student>()
+    private var allTeachers = listOf<Teacher>()
+    private var filteredNames = mutableListOf<String>()
+
 
     private val liveCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -76,34 +85,98 @@ class EnrollActivity : AppCompatActivity() {
         radioActionType = findViewById(R.id.radioActionType)
 
         editSearchId = findViewById(R.id.editSearchId)
-        btnSearch = findViewById(R.id.btnSearch)
-
         editName = findViewById(R.id.editName)
         btnEnrollFace = findViewById(R.id.btnEnrollFace)
 
-        btnSearch.setOnClickListener { searchUser() }
+
+        listUsers = findViewById(R.id.listUsers)
+
+
+        setupSearchDropdown()
+        loadLocalUsers()
+        setupDropdownListeners()
+
         btnEnrollFace.setOnClickListener { handleActionClick() }
     }
 
-    private fun searchUser() {
-        try {
-            val enteredId = editSearchId.text.toString().trim()
-            if (enteredId.isEmpty()) {
-                Toast.makeText(this, "Enter an ID to search!", Toast.LENGTH_SHORT).show()
-                return
-            }
 
-            val userType = selectedUserType()
-            when (userType) {
-                "student" -> searchStudentById(enteredId)
-                "staff" -> searchTeacherById(enteredId)
-                else -> Toast.makeText(this, "Select user type first!", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-            Log.e("EnrollActivity", "searchUser error", e)
+    private fun loadLocalUsers() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getDatabase(this@EnrollActivity)
+            allStudents = db.studentsDao().getAllStudents()
+            allTeachers = db.teachersDao().getAllTeachers()
         }
     }
+
+
+    private fun setupSearchDropdown() {
+
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, filteredNames)
+        listUsers.adapter = adapter
+
+        editSearchId.addTextChangedListener {
+
+            val query = it.toString().trim().lowercase()
+
+            if (query.isEmpty()) {
+                hideDropdown()
+                filteredNames.clear()
+                adapter.notifyDataSetChanged()
+                return@addTextChangedListener
+            }
+
+            filteredNames.clear()
+
+            val type = selectedUserType()
+            filteredNames.addAll(
+                if (type == "student")
+                    allStudents.filter { s -> s.studentName.lowercase().contains(query) }
+                        .map { "${it.studentName} (${it.studentId})" }
+                else
+                    allTeachers.filter { t -> t.staffName.lowercase().contains(query) }
+                        .map { "${it.staffName} (${it.staffId})" }
+            )
+
+            listUsers.visibility = View.VISIBLE
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+
+    private fun setupDropdownListeners() {
+
+        listUsers.setOnItemClickListener { _, _, position, _ ->
+            val selected = filteredNames[position]
+            val name = selected.substringBefore("(").trim()
+            val id = selected.substringAfter("(").removeSuffix(")").trim()
+
+            editSearchId.setText(name)
+            editName.setText(name)
+
+            val type = selectedUserType()
+            if (type == "student") {
+                selectedStudent = allStudents.find { it.studentId == id }
+                selectedTeacher = null
+            } else {
+                selectedTeacher = allTeachers.find { it.staffId == id }
+                selectedStudent = null
+            }
+
+            hideDropdown()
+        }
+
+        // Hide list when clicking outside
+        findViewById<FrameLayout>(R.id.rootLayout).setOnClickListener {
+            hideDropdown()
+        }
+    }
+
+    private fun hideDropdown() {
+        listUsers.visibility = View.GONE
+    }
+
+
+
 
     private fun selectedUserType(): String {
         return when (radioUserType.checkedRadioButtonId) {
@@ -122,57 +195,9 @@ class EnrollActivity : AppCompatActivity() {
         }
     }
 
-    private fun searchStudentById(id: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val db = AppDatabase.getDatabase(this@EnrollActivity)
-                val student = db.studentsDao().getStudentById(id)
 
-                withContext(Dispatchers.Main) {
-                    if (student == null) {
-                        Toast.makeText(this@EnrollActivity, "Student not found!", Toast.LENGTH_SHORT).show()
-                        selectedStudent = null
-                        editName.setText("")
-                    } else {
-                        selectedStudent = student
-                        selectedTeacher = null
-                        editName.setText("${student.studentId} - ${student.studentName}")
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@EnrollActivity, "Error searching student: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-                Log.e("EnrollActivity", "searchStudentById error", e)
-            }
-        }
-    }
 
-    private fun searchTeacherById(id: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val db = AppDatabase.getDatabase(this@EnrollActivity)
-                val teacher = db.teachersDao().getTeacherById(id)
 
-                withContext(Dispatchers.Main) {
-                    if (teacher == null) {
-                        Toast.makeText(this@EnrollActivity, "Teacher not found!", Toast.LENGTH_SHORT).show()
-                        selectedTeacher = null
-                        editName.setText("")
-                    } else {
-                        selectedTeacher = teacher
-                        selectedStudent = null
-                        editName.setText("${teacher.staffId} - ${teacher.staffName}")
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@EnrollActivity, "Error searching teacher: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-                Log.e("EnrollActivity", "searchTeacherById error", e)
-            }
-        }
-    }
 
     private fun handleActionClick() {
         try {
