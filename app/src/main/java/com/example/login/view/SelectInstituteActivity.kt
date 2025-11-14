@@ -188,7 +188,7 @@ class SelectInstituteActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             progressBar.visibility = ProgressBar.GONE
                             btnSync.isEnabled = true
-                            showToast("No internet access. Please check your connection.")
+                            showToast("Unable to connect to the server. Please try again.")
                         }
                         return@launch
                     }
@@ -227,7 +227,7 @@ class SelectInstituteActivity : AppCompatActivity() {
                             startActivity(intent)
                             finish()
                         }else{
-                            showToast("Partial sync detected. Please try again.")
+                            showToast("Some data failed to sync. Please try again.")
                         }
                     }
 
@@ -235,7 +235,7 @@ class SelectInstituteActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         progressBar.visibility = ProgressBar.GONE
                         btnSync.isEnabled = true
-                        showToast("Error: ${e.message}")
+                        showToast("Something went wrong. Please try again later.")
                     }
                     Log.e(TAG, "SYNC_EXCEPTION: ${e.message}", e)
                 }
@@ -243,7 +243,7 @@ class SelectInstituteActivity : AppCompatActivity() {
         }
     }
 
-    // ✅  Safe toast helper that works from any thread
+    //   Safe toast helper that works from any thread
     private fun showToast(message: String) {
         runOnUiThread {
             Toast.makeText(this@SelectInstituteActivity, message, Toast.LENGTH_LONG).show()
@@ -552,7 +552,7 @@ class SelectInstituteActivity : AppCompatActivity() {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         } catch (e: Exception) { "1.0" }
 
-        // ✅ Return proper JSON string just like server expects
+        //  Return proper JSON string just like server expects
         return """
         {
           "deviceUtilityParamData": {

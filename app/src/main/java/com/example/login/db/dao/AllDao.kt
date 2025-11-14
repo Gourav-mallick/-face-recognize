@@ -15,6 +15,7 @@ import com.example.login.db.entity.Class
 import com.example.login.db.entity.CourseFullInfo
 import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.Session
+import com.example.login.db.entity.TeacherClassMap
 
 
 @Dao
@@ -33,6 +34,10 @@ interface StudentsDao {
 
     @Query("SELECT * FROM students WHERE classId = :classId")
     suspend fun getStudentsByClass(classId: String): List<Student>
+
+    @Query("SELECT * FROM students WHERE classId IN (:classIds)")
+    suspend fun getStudentsByClasses(classIds: List<String>): List<Student>
+
 
     @Query("""
     SELECT * FROM students 
@@ -159,6 +164,25 @@ interface ClassDao {
 
 }
 
+
+@Dao
+interface TeacherClassMapDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(map: TeacherClassMap)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<TeacherClassMap>)
+
+    @Query("SELECT * FROM teacher_class_map")
+    suspend fun getAllTeacherClassMaps(): List<TeacherClassMap>
+
+    @Query("SELECT classId FROM teacher_class_map WHERE teacherId = :teacherId")
+    suspend fun getClassesForTeacher(teacherId: String): List<String>
+
+    @Query("DELETE  FROM teacher_class_map")
+    suspend fun clear()
+}
 
 
 @Dao
@@ -294,6 +318,7 @@ interface AttendanceDao {
     @Query("SELECT * FROM attendance WHERE sessionId = :sessionId")
     suspend fun getAttendanceBySessionId(sessionId: String): List<Attendance>
 
+
     @Query("SELECT studentName FROM attendance WHERE sessionId = :sessionId ORDER BY markedAt DESC LIMIT 1")
     fun getLastMarkedStudentNameForSession(sessionId: String): String?
 
@@ -301,7 +326,6 @@ interface AttendanceDao {
     // ✅ Update sync status for all attendance in a session
     @Query("UPDATE attendance SET syncStatus = :newStatus WHERE sessionId = :sessionId")
     suspend fun updateSyncStatusBySession(sessionId: String, newStatus: String)
-
 
 
     @Query("SELECT * FROM Attendance WHERE sessionId = :sessionId")
@@ -325,6 +349,7 @@ interface AttendanceDao {
 
     @Query("SELECT * FROM attendance WHERE syncStatus = :status")
     suspend fun getPendingAttendancesByStatus(status: String): List<Attendance>
+
 
     @Query("DELETE FROM Attendance WHERE sessionId = :sessionId")
     suspend fun deleteAttendanceForSession(sessionId: String)

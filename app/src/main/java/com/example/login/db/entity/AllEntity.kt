@@ -67,6 +67,12 @@ data class Class(
 ) : Parcelable
 
 
+@Entity(tableName = "teacher_class_map",
+    primaryKeys = ["teacherId", "classId"])
+data class TeacherClassMap(
+    val teacherId: String,
+    val classId: String
+)
 
 
 @Entity(tableName = "sessions")
@@ -110,7 +116,7 @@ data class Attendance(
     val startTime: String,
     val endTime: String,
     val period: String,
-    // ✅ New fields for course/subject/class mapping
+    //  New fields for course/subject/class mapping
     val cpId: String? = null,               // Course Period ID
     val courseId: String? = null,           // Course ID
     val courseTitle: String? = null,        // Full course title

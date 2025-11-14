@@ -95,6 +95,7 @@ class AttendanceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_attendance)
 
+
         WorkManager.getInstance(this)
             .enqueue(OneTimeWorkRequest.from(AutoSyncWorker::class.java))
 
@@ -162,6 +163,10 @@ class AttendanceActivity : AppCompatActivity() {
 
         // Restore pending sessions (endTime empty) into activeClasses
        restorePendingSessions()
+
+
+
+
     }
 /*
     override fun onResume() {

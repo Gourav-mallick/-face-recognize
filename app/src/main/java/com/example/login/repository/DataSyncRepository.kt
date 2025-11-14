@@ -1,7 +1,9 @@
 package com.example.login.repository
 
 import android.content.Context
+import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import com.example.login.api.ApiService
 import com.example.login.db.dao.AppDatabase
 import com.example.login.db.entity.*
@@ -53,6 +55,7 @@ class DataSyncRepository(private val context: Context) {
             Log.d(TAG, "Inserted ${studentsList} students.")
             true
         } else {
+            showToast("Unable to fetch student data. Please try again.")
             Log.e(TAG, "STUDENT_API_FAILED: ${response.errorBody()?.string()}")
             false
         }
@@ -93,6 +96,7 @@ class DataSyncRepository(private val context: Context) {
             Log.d(TAG, "Inserted ${teachersList.size} teachers.")
             true
         } else {
+            showToast("Unable to fetch teacher data. Please try again.")
             Log.e(TAG, "TEACHER_API_FAILED: ${response.errorBody()?.string()}")
             false
         }
@@ -114,27 +118,62 @@ class DataSyncRepository(private val context: Context) {
                 ?.optJSONArray("subjectInstancesData") ?: JSONArray()
 
             if (dataArray.length() == 0) {
+                showToast("No subject instance data found.")
                 Log.w(TAG, "No subject instance data found.")
                 return@withContext false
             }
 
-            val coursePeriods = mutableListOf<CoursePeriod>()
-            val courses = mutableListOf<Course>()
-            val subjects = mutableListOf<Subject>()
+            val coursePeriodList = mutableListOf<CoursePeriod>()
+            val courseList = mutableListOf<Course>()
+            val subjectList = mutableListOf<Subject>()
+
+            val teacherClassMapList = mutableListOf<TeacherClassMap>()
 
             for (i in 0 until dataArray.length()) {
                 val obj = dataArray.getJSONObject(i)
-                subjects.add(Subject(obj.optString("subjectIds"), obj.optString("subjectTitles")))
-                courses.add(Course(obj.optString("courseIds"), obj.optString("subjectIds"), obj.optString("courseTitles"), obj.optString("courseTitles")))
-                coursePeriods.add(CoursePeriod(obj.optString("cpIds"), obj.optString("courseIds"), obj.optString("classIds"), obj.optString("teacherIds").replace(",", "").trim(), obj.optString("mpId"), obj.optString("mpLongTitle")))
+
+                val cpId = obj.optString("cpIds")
+                val courseId = obj.optString("courseIds")
+                val subjectId = obj.optString("subjectIds")
+                val subjectTitle = obj.optString("subjectTitles")
+                val courseTitle = obj.optString("courseTitles")
+                val classId = obj.optString("classIds")
+                val classShortName = obj.optString("classShortNames")
+                val mpId = obj.optString("mpId")
+                val mpLongTitle = obj.optString("mpLongTitle")
+                val teacherId = obj.optString("teacherIds").replace(",", "").trim()
+
+                subjectList.add(Subject(subjectId, subjectTitle))
+                courseList.add(Course(courseId, subjectId, courseTitle, courseTitle))
+                coursePeriodList.add(CoursePeriod(cpId, courseId, classId, teacherId, mpId, mpLongTitle))
+
+                // 👇 NEW MAPPING
+                if (teacherId.isNotEmpty()) {
+                    teacherClassMapList.add(
+                        TeacherClassMap(
+                            teacherId = teacherId,
+                            classId = classId
+                        )
+                    )
+                }
             }
 
-            db.subjectDao().insertAll(subjects)
-            db.courseDao().insertAll(courses)
-            db.coursePeriodDao().insertAll(coursePeriods)
-            Log.d(TAG, "Subjects: ${subjects.size}, Courses: ${courses.size}, CoursePeriods: ${coursePeriods.size}")
+
+            db.subjectDao().insertAll(subjectList)
+            db.courseDao().insertAll(courseList)
+            db.coursePeriodDao().insertAll(coursePeriodList)
+
+            db.teacherClassMapDao().clear()
+            db.teacherClassMapDao().insertAll(teacherClassMapList)
+
+          //  val teacherClassMap = db.teacherClassMapDao().getAllTeacherClassMaps()
+          //  Log.d(TAG, "Teacher-Class mapping data: ${teacherClassMap}")
+            Log.d(TAG, "Subjects: ${subjectList.size}, Courses: ${courseList.size}, CoursePeriods: ${coursePeriodList.size}")
+            Log.d(TAG, "Teacher-Class mapping saved: ${teacherClassMapList.size}")
+
             true
         } else {
+            showToast("Unable to fetch class schedule. Please try again.")
             Log.e(TAG, "SUBJECT_INSTANCE_API_FAILED: ${response.errorBody()?.string()}")
             false
         }
@@ -173,4 +212,12 @@ class DataSyncRepository(private val context: Context) {
             false
         }
     }
+
+
+    private fun showToast(message: String) {
+        Handler(context.mainLooper).post {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
 }

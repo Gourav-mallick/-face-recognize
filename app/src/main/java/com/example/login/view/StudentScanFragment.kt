@@ -151,8 +151,8 @@ class StudentScanFragment : Fragment() {
         FaceDetection.getClient(
             FaceDetectorOptions.Builder()
                 .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
                 .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
                 .build()
         )
     }
@@ -161,7 +161,7 @@ class StudentScanFragment : Fragment() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 100) {
+        if (now - lastProcessTime < 30) {
             imageProxy.close()
             return
         }
@@ -197,7 +197,7 @@ class StudentScanFragment : Fragment() {
                         if (isCentered) {
                             if (faceStableStart == 0L) faceStableStart = System.currentTimeMillis()
                             val elapsed = System.currentTimeMillis() - faceStableStart
-                            faceGuide.background.setTint(if (elapsed >= 800) Color.GREEN else Color.YELLOW)
+                            faceGuide.background.setTint(if (elapsed >= 300) Color.GREEN else Color.YELLOW)
 
                             if (elapsed >= 800 && !isVerifying) {
                                 isVerifying = true
@@ -241,19 +241,26 @@ class StudentScanFragment : Fragment() {
                 return@launch
             }
 
-            val currentTeacherId = session.teacherId
-            val classId = session.classId
+            // 1. Get teacher from session
+            val teacherId = session.teacherId
 
-            // Load stored embeddings
+            // 2. Get allowed class IDs for this teacher
+            val allowedClassIds = db.teacherClassMapDao().getClassesForTeacher(teacherId)
+            Log.d("STUDENT_FILTER", "Teacher $teacherId allowed classes = $allowedClassIds")
+
+            // Load all teacher
             val teachers = db.teachersDao().getAllTeachers()
-            val students = db.studentsDao().getAllStudents()
+
+            // 3. Load only students of those classes
+            val students = db.studentsDao().getStudentsByClasses(allowedClassIds)
+            Log.d("STUDENT_FILTER", "Loaded ${students.size} students for face match")
 
             var bestMatchName = "Unknown"
             var bestMatchId: String? = null
             var bestIsTeacher = false
             var minDist = Float.MAX_VALUE
 
-            // Check teacher embeddings
+            // Compare faceEmbedding with teachers
             for (t in teachers) {
                 val embStr = t.embedding ?: continue
                 val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
@@ -268,7 +275,7 @@ class StudentScanFragment : Fragment() {
                 }
             }
 
-            // Check students
+            // Compare faceEmbedding with students
             for (s in students) {
                 val embStr = s.embedding ?: continue
                 val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
@@ -285,16 +292,17 @@ class StudentScanFragment : Fragment() {
 
             // Evaluate result
             withContext(Dispatchers.Main) {
+
+                //If no match OR match is too far
                 if (bestMatchId == null || minDist >= DIST_THRESHOLD) {
-                    toast("Unknown face")
+                    toast("“Student not in this teacher class")
                     done()
                     return@withContext
                 }
 
-                // 1) Teacher match
-                // 1) Teacher match
+                // 1) If the best match is a teacher
                 if (bestIsTeacher) {
-                    if (bestMatchId == currentTeacherId) {
+                    if (bestMatchId == teacherId) {
                         // ✅ Check if there are any students marked present in this session
                         lifecycleScope.launch(Dispatchers.IO) {
                             val db = AppDatabase.getDatabase(requireContext())
@@ -371,13 +379,29 @@ class StudentScanFragment : Fragment() {
                 }
 
 
-                // 2) Student match
+                // 2) If best match is a student
                 val matchedStudent = db.studentsDao().getStudentById(bestMatchId!!)
                 if (matchedStudent == null) {
                     toast("Student not found in DB")
                     done()
                     return@withContext
                 }
+
+                Log.d("STUDENT_CLASS_CHECK", "Teacher $teacherId allowed classes = $allowedClassIds")
+                Log.d("STUDENT_CLASS_CHECK", "Student ${matchedStudent.studentName} class = ${matchedStudent.classId}")
+/*
+                  //  Reject student not in allowed class list
+                if (!allowedClassIds.contains(matchedStudent.classId)) {
+                    toast("❌ ${matchedStudent.studentName} is NOT assigned to this teacher’s class")
+                    Log.e(
+                        "STUDENT_CLASS_CHECK",
+                        "Rejected. Student class ${matchedStudent.classId} NOT IN $allowedClassIds"
+                    )
+                    done()
+                    return@withContext
+                }
+
+ */
 
                 // Mark attendance through AttendanceActivity logic (preserve everything)
                 (requireActivity() as AttendanceActivity).simulateStudentScan(matchedStudent)

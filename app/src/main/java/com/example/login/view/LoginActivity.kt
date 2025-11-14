@@ -111,7 +111,7 @@ class LoginActivity : AppCompatActivity() {
                                 Log.d(TAG, "COLLECTION_RESPONSE: $collection")
                                 if (collection == null) {
                                     Log.e(TAG, "PARSE_ERROR: Missing 'collection'")
-                                    Toast.makeText(this@LoginActivity, "Parse Error: Invalid response structure", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this@LoginActivity, "Something went wrong. Please try again.", Toast.LENGTH_LONG).show()
                                     return@withContext
                                 }
 
@@ -119,7 +119,7 @@ class LoginActivity : AppCompatActivity() {
                                 Log.d(TAG, "RESPONSE: $responseObj")
                                 if (responseObj == null) {
                                     Log.e(TAG, "PARSE_ERROR: Missing 'response'")
-                                    Toast.makeText(this@LoginActivity, "Parse Error: Invalid response structure", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this@LoginActivity, "Server response incomplete. Please try again.", Toast.LENGTH_LONG).show()
                                     return@withContext
                                 }
 
@@ -132,7 +132,7 @@ class LoginActivity : AppCompatActivity() {
                                 Log.d(TAG, "USERDATA: $userData")
                                 if (userData == null) {
                                     Log.e(TAG, "PARSE_ERROR: Missing 'userData'. ResponseMsg: $responseMsg")
-                                    Toast.makeText(this@LoginActivity, "Login failed: $responseMsg", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this@LoginActivity, "Login failed. Please check your username or password.", Toast.LENGTH_LONG).show()
                                     return@withContext
                                 }
 
@@ -211,17 +211,17 @@ class LoginActivity : AppCompatActivity() {
 
                             } catch (parseE: Exception) {
                                 Log.e(TAG, "JSON_PARSE_EXCEPTION: ${parseE.message}", parseE)
-                                Toast.makeText(this@LoginActivity, "Parse Error: ${parseE.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this@LoginActivity, "Unexpected server response. Please try again.", Toast.LENGTH_LONG).show()
                             }
                         } else {
                             val errorBody = response.errorBody()?.string() ?: "No error body"
                             Log.e(TAG, "API_ERROR: HTTP ${response.code()} - ${response.message()} - Error: $errorBody")
-                            Toast.makeText(this@LoginActivity, "Server error: ${response.code()}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@LoginActivity, "Server is busy. Please try again later.", Toast.LENGTH_LONG).show()
                         }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@LoginActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@LoginActivity, "Unable to reach the server. Please try again later.", Toast.LENGTH_LONG).show()
                     }
                     Log.e(TAG, "API_EXCEPTION: ${e.message}", e)
                 }
