@@ -168,6 +168,8 @@ class AttendanceActivity : AppCompatActivity() {
 
 
     }
+
+
 /*
     override fun onResume() {
         super.onResume()
@@ -670,7 +672,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
             AlertDialog.Builder(this@AttendanceActivity)
                 .setTitle("Close Class: ${cycle.classroomId}")
-                .setMessage("Do you want to close this class?")
+                .setMessage("Would you like to end this class now?")
                 .setPositiveButton("Yes") { _, _ ->
                     lifecycleScope.launch {
                         cycle.sessionId?.let { db.sessionDao().updateSessionEnd(it, currentTime) }
@@ -1057,10 +1059,13 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Camera permission granted", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Camera permission denied. Face detection will not work.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Camera permission is required for face verification. Please enable it", Toast.LENGTH_LONG).show()
             }
         }
     }
 
+    private fun showUserMessage(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
 
 }

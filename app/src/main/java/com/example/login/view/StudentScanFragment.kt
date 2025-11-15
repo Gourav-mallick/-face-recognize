@@ -161,7 +161,7 @@ class StudentScanFragment : Fragment() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 30) {
+        if (now - lastProcessTime < 120) {
             imageProxy.close()
             return
         }
@@ -237,7 +237,7 @@ class StudentScanFragment : Fragment() {
             val session = db.sessionDao().getSessionById(sessionIdArg)
             if (session == null) {
                 done()
-                toast("Invalid session")
+                toast("Unable to continue. Please restart the attendance process.")
                 return@launch
             }
 
@@ -295,7 +295,7 @@ class StudentScanFragment : Fragment() {
 
                 //If no match OR match is too far
                 if (bestMatchId == null || minDist >= DIST_THRESHOLD) {
-                    toast("“Student not in this teacher class")
+                    toast("This student does not belong to the selected class.")
                     done()
                     return@withContext
                 }
@@ -339,7 +339,7 @@ class StudentScanFragment : Fragment() {
 
                                                     Toast.makeText(
                                                         requireContext(),
-                                                        "Class closed. Returning to start.",
+                                                        "Class has been closed. Returning to the main screen.",
                                                         Toast.LENGTH_LONG
                                                     ).show()
 
@@ -371,7 +371,7 @@ class StudentScanFragment : Fragment() {
                             }
                         }
                     } else {
-                        toast("Different teacher Detected ")
+                        toast("This face belongs to a different teacher.")
                     }
 
                     done()
@@ -382,7 +382,7 @@ class StudentScanFragment : Fragment() {
                 // 2) If best match is a student
                 val matchedStudent = db.studentsDao().getStudentById(bestMatchId!!)
                 if (matchedStudent == null) {
-                    toast("Student not found in DB")
+                    toast("Unable to identify the student. Please try again.")
                     done()
                     return@withContext
                 }
