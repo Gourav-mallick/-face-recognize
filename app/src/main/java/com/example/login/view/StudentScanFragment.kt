@@ -66,6 +66,12 @@ class StudentScanFragment : Fragment() {
     private val CROP_SCALE = 1.3f
     private val MIRROR_FRONT = true
 
+    //Add a preloaded cache
+    private val cachedStudentEmbeddings = mutableListOf<Triple<String, String, FloatArray>>()
+    private val cachedTeacherEmbeddings = mutableListOf<Triple<String, String, FloatArray>>()
+    private var cacheLoaded = false
+
+
     companion object {
         private const val ARG_TEACHER = "arg_teacher"
         private const val ARG_SESSION_ID = "arg_session_id"
@@ -106,6 +112,10 @@ class StudentScanFragment : Fragment() {
 
         faceNet = FaceNetHelper(requireContext())
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        // ---------- LOAD CACHE ONCE ----------
+        loadFaceEmbeddingCache()
+
 
         if (allPermissionsGranted()) startCamera()
         else requestPermissions(REQUIRED_PERMISSIONS, 101)
@@ -244,16 +254,6 @@ class StudentScanFragment : Fragment() {
             // 1. Get teacher from session
             val teacherId = session.teacherId
 
-            // 2. Get allowed class IDs for this teacher
-            val allowedClassIds = db.teacherClassMapDao().getClassesForTeacher(teacherId)
-            Log.d("STUDENT_FILTER", "Teacher $teacherId allowed classes = $allowedClassIds")
-
-            // Load all teacher
-            val teachers = db.teachersDao().getAllTeachers()
-
-            // 3. Load only students of those classes
-            val students = db.studentsDao().getStudentsByClasses(allowedClassIds)
-            Log.d("STUDENT_FILTER", "Loaded ${students.size} students for face match")
 
             var bestMatchName = "Unknown"
             var bestMatchId: String? = null
@@ -261,34 +261,28 @@ class StudentScanFragment : Fragment() {
             var minDist = Float.MAX_VALUE
 
             // Compare faceEmbedding with teachers
-            for (t in teachers) {
-                val embStr = t.embedding ?: continue
-                val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
-                if (emb.isEmpty()) continue
-
+            for ((id, name, emb) in cachedTeacherEmbeddings) {
                 val dist = faceNet.calculateDistance(emb, faceEmbedding)
                 if (dist < minDist) {
                     minDist = dist
-                    bestMatchName = t.staffName
-                    bestMatchId = t.staffId
+                    bestMatchName = name
+                    bestMatchId = id
                     bestIsTeacher = true
                 }
             }
 
-            // Compare faceEmbedding with students
-            for (s in students) {
-                val embStr = s.embedding ?: continue
-                val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
-                if (emb.isEmpty()) continue
 
+            // Compare faceEmbedding with students
+            for ((id, name, emb) in cachedStudentEmbeddings) {
                 val dist = faceNet.calculateDistance(emb, faceEmbedding)
                 if (dist < minDist) {
                     minDist = dist
-                    bestMatchName = s.studentName
-                    bestMatchId = s.studentId
+                    bestMatchName = name
+                    bestMatchId = id
                     bestIsTeacher = false
                 }
             }
+
 
             // Evaluate result
             withContext(Dispatchers.Main) {
@@ -387,21 +381,8 @@ class StudentScanFragment : Fragment() {
                     return@withContext
                 }
 
-                Log.d("STUDENT_CLASS_CHECK", "Teacher $teacherId allowed classes = $allowedClassIds")
                 Log.d("STUDENT_CLASS_CHECK", "Student ${matchedStudent.studentName} class = ${matchedStudent.classId}")
-/*
-                  //  Reject student not in allowed class list
-                if (!allowedClassIds.contains(matchedStudent.classId)) {
-                    toast("❌ ${matchedStudent.studentName} is NOT assigned to this teacher’s class")
-                    Log.e(
-                        "STUDENT_CLASS_CHECK",
-                        "Rejected. Student class ${matchedStudent.classId} NOT IN $allowedClassIds"
-                    )
-                    done()
-                    return@withContext
-                }
 
- */
 
                 // Mark attendance through AttendanceActivity logic (preserve everything)
                 (requireActivity() as AttendanceActivity).simulateStudentScan(matchedStudent)
@@ -558,6 +539,39 @@ class StudentScanFragment : Fragment() {
         }
 
         return true
+    }
+
+
+    private fun loadFaceEmbeddingCache() {
+        if (cacheLoaded) return      // prevents double load
+        cacheLoaded = true
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getDatabase(requireContext())
+
+            // Load teachers
+            db.teachersDao().getAllTeachers().forEach { t ->
+                val embStr = t.embedding ?: return@forEach
+                val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
+                if (emb.isNotEmpty()) {
+                    cachedTeacherEmbeddings.add(Triple(t.staffId, t.staffName, emb))
+                }
+            }
+
+            // Load students of allowed classes ONLY
+            val session = db.sessionDao().getSessionById(sessionIdArg) ?: return@launch
+            val allowedClassIds = db.teacherClassMapDao().getClassesForTeacher(session.teacherId)
+
+            db.studentsDao().getStudentsByClasses(allowedClassIds).forEach { s ->
+                val embStr = s.embedding ?: return@forEach
+                val emb = embStr.split(",").mapNotNull { it.toFloatOrNull() }.toFloatArray()
+                if (emb.isNotEmpty()) {
+                    cachedStudentEmbeddings.add(Triple(s.studentId, s.studentName, emb))
+                }
+            }
+
+            Log.d("EMB_CACHE", "Loaded ${cachedTeacherEmbeddings.size} teachers + ${cachedStudentEmbeddings.size} students into cache")
+        }
     }
 
 
