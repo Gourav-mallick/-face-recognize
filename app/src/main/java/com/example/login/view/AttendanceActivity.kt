@@ -110,36 +110,35 @@ class AttendanceActivity : AppCompatActivity() {
         }
 
 
+        checkDeviceTime {
+            // 🔹 Restore screen if app was killed mid-session
+            val statePrefs = getSharedPreferences("APP_STATE", MODE_PRIVATE)
 
-        // 🔹 Restore screen if app was killed mid-session
-        val statePrefs = getSharedPreferences("APP_STATE", MODE_PRIVATE)
+            // ✅ If cleared or missing, always start fresh
+            val currentScreen = statePrefs.getString("CURRENT_SCREEN", null)
 
-        // ✅ If cleared or missing, always start fresh
-        val currentScreen = statePrefs.getString("CURRENT_SCREEN", null)
-        if (currentScreen.isNullOrEmpty()) {
-            val frag = ClassroomScanFragment.newInstance()
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, frag, "CLASSROOM")
-                .commit()
-            return
-        }
-        when (currentScreen) {
-            "TEACHER_SCAN" -> {
-                val classId = statePrefs.getString("CLASSROOM_ID", "")
-                val frag = TeacherScanFragment.newInstance(classId!!)
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, frag, "TEACHER")
-                    .commitAllowingStateLoss()
-                return
-            }
-            "STUDENT_SCAN" -> {
-                val teacherName = statePrefs.getString("TEACHER_NAME", "")
-                val sessionId = statePrefs.getString("SESSION_ID", "")
-                val frag = StudentScanFragment.newInstance(teacherName ?: "", sessionId ?: "")
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, frag, "STUDENT")
-                    .commitAllowingStateLoss()
-                return
+            when (currentScreen) {
+                "TEACHER_SCAN" -> {
+                    val classId = statePrefs.getString("CLASSROOM_ID", "")
+                    val frag = TeacherScanFragment.newInstance(classId!!)
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, frag, "TEACHER")
+                        .commitAllowingStateLoss()
+
+                }
+
+                "STUDENT_SCAN" -> {
+                    val teacherName = statePrefs.getString("TEACHER_NAME", "")
+                    val sessionId = statePrefs.getString("SESSION_ID", "")
+                    val frag = StudentScanFragment.newInstance(teacherName ?: "", sessionId ?: "")
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, frag, "STUDENT")
+                        .commitAllowingStateLoss()
+
+                }
+                else -> {
+                    startClassroomScanFragment()
+                }
             }
         }
 
@@ -151,180 +150,11 @@ class AttendanceActivity : AppCompatActivity() {
             "HourlySync", ExistingPeriodicWorkPolicy.KEEP, request
         )
 
-        // Check device time and match with server time
-        checkDeviceTime { startClassroomScanFragment() }
-
-        if (savedInstanceState == null) {
-            val frag = ClassroomScanFragment.newInstance()
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, frag, TAG_CLASSROOM)
-                .commit()
-        }
-
         // Restore pending sessions (endTime empty) into activeClasses
        restorePendingSessions()
 
-
-
-
     }
 
-
-/*
-    override fun onResume() {
-        super.onResume()
-
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        if (nfcAdapter == null) {
-           // Toast.makeText(this, "NFC not supported on this device", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        pendingIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        try { nfcAdapter?.disableForegroundDispatch(this) } catch (_: Exception) {}
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG) ?: return
-        val tagId = tag.id.joinToString(":") { String.format("%02X", it) }
-        Log.d(TAG, "Tag UID: $tagId")
-        readCustomCardData(tag)
-    }
-
-    // ---------------- NFC reading  ----------------
-    private fun readCustomCardData(tag: Tag) {
-        val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
-        val keyHex = prefs.getString("cpass", null)
-        if (keyHex.isNullOrEmpty()) {
-            Toast.makeText(this, "Missing authentication key (cpass)!", Toast.LENGTH_LONG).show()
-            Log.e(TAG, "No key found in SharedPreferences.")
-            return
-        }
-
-        val keyBytes = try { hexStringToByteArray(keyHex) } catch (e: Exception) {
-            Toast.makeText(this, "Invalid hex key format!", Toast.LENGTH_SHORT).show()
-            Log.e(TAG, "Key conversion failed: ${e.message}")
-            return
-        }
-        Log.d(TAG, "Key bytes: ${keyBytes.joinToString(" ")}")
-        Log.d(TAG, "Key bytes actual data: ${keyBytes.toString()}")
-
-
-
-        val mifare = MifareClassic.get(tag)
-        if (mifare == null) {
-            Toast.makeText(this, "Not a MIFARE Classic card", Toast.LENGTH_LONG).show()
-            Log.e(TAG, "MifareClassic not supported on this tag")
-            return
-        }
-
-        try {
-            mifare.connect()
-            val sectorIndex = 0
-            val auth = mifare.authenticateSectorWithKeyA(sectorIndex, keyBytes)
-            if (!auth) {
-                Toast.makeText(this, "Authentication failed!", Toast.LENGTH_SHORT).show()
-                Log.e(TAG, "Authentication failed.")
-                return
-            }
-
-            val firstBlock = mifare.sectorToBlock(sectorIndex)
-            val blockCount = mifare.getBlockCountInSector(sectorIndex)
-            var name: String? = null
-
-            for (i in 0 until blockCount) {
-                val blockIndex = firstBlock + i
-                if (blockIndex == 0 || (blockIndex + 1) % 5 == 0) continue
-                val data = mifare.readBlock(blockIndex)
-                val rawText = String(data, Charsets.ISO_8859_1).replace("\u0000", "").trim()
-                if (blockIndex == firstBlock + 1) {
-                    name = rawText
-                    Log.d(TAG, "Name: $rawText")
-                }
-                if (blockIndex == firstBlock + 2) {
-                    val facilityCode = data.sliceArray(0..1).joinToString("") { "%02X".format(it) }
-                    val idTypeHex = data.sliceArray(2..4).joinToString("") { "%02X".format(it) }
-                    Log.d(TAG, "Block2 raw bytes hex: $idTypeHex")
-                    val firstChar = idTypeHex.firstOrNull()?.uppercaseChar()
-                    var typeChar: String? = null
-                    var idValue = ""
-
-                    if (firstChar != null && (firstChar == 'A' || firstChar == 'B' || firstChar == 'C')) {
-                        typeChar = firstChar.toString()
-                        idValue = idTypeHex.substring(1).trimStart('0').ifEmpty { "0" }
-                    } else {
-                        val slice = data.sliceArray(2..4)
-                        val idBytes = ArrayList<Byte>()
-                        for (b in slice) {
-                            when (b.toInt() and 0xFF) {
-                                0x41 -> typeChar = "A"
-                                0x42 -> typeChar = "B"
-                                0x43 -> typeChar = "C"
-                                0x00 -> { }
-                                else -> idBytes.add(b)
-                            }
-                        }
-                        idValue = if (idBytes.isEmpty()) "" else idBytes.joinToString("") { "%02X".format(it) }.trimStart('0').ifEmpty { "0" }
-                    }
-
-                    if (typeChar == null) typeChar = "Unknown"
-                    Log.d(TAG, "Parsed -> Facility: $facilityCode | Type: $typeChar | ID: $idValue")
-
-                    handleNfcScan(name ?: "-", typeChar, idValue)
-                }
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading card: ${e.message}", e)
-            Toast.makeText(this, "Error reading card: ${e.message}", Toast.LENGTH_LONG).show()
-        } finally {
-            try { mifare.close() } catch (_: Exception) {}
-            Log.d(TAG, "Card connection closed.")
-        }
-    }
-
-    // ---------------- High-level NFC handling ----------------
-    private fun handleNfcScan(name: String, typeChar: String, idValue: String) {
-        lifecycleScope.launch {
-            val db = AppDatabase.getDatabase(this@AttendanceActivity)
-            val nameParts = name.trim().split(" ").filter { it.isNotEmpty() }
-            val part1 = nameParts.getOrNull(0)
-            val part2 = nameParts.getOrNull(1)
-            val part3 = nameParts.getOrNull(2)
-
-            when (typeChar) {
-                "A" -> {
-                    val classObj = db.classDao().getClassById(idValue)
-                    if (classObj != null) handleClassScan(classObj.classId, classObj.classShortName)
-                    else Toast.makeText(this@AttendanceActivity, "Class not found!", Toast.LENGTH_SHORT).show()
-                }
-                "B" -> {
-                    val teacher = db.teachersDao().getAndMatchTeacherByIdName(idValue, part1, part2, part3)
-                    if (teacher != null) handleTeacherScan(teacher.staffId, teacher.staffName)
-                    else Toast.makeText(this@AttendanceActivity, "Teacher not found!", Toast.LENGTH_SHORT).show()
-                }
-                "C" -> {
-                    val student = db.studentsDao().getAndMatchStudentByIdName(idValue, part1, part2, part3)
-                    if (student != null) handleStudentScan(student)
-                    else Toast.makeText(this@AttendanceActivity, "Student not found!", Toast.LENGTH_SHORT).show()
-                }
-                else -> Toast.makeText(this@AttendanceActivity, "Unknown type: $typeChar", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
- */
     // ----------------- Scan: Classroom -----------------
     private fun handleClassScan(classroomId: String, classroomName: String) {
         lifecycleScope.launch {

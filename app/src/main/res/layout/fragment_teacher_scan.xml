@@ -3,102 +3,116 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient"
     android:padding="16dp">
 
+    <!-- INNER CONTAINER (consistent with classroom fragment) -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_gradient"
-        android:padding="8dp"
-        >
+        android:padding="12dp"
+        android:background="@android:color/transparent">
 
-        <!-- Top: Camera Preview with Overlay -->
+        <!-- HEADER -->
         <TextView
             android:id="@+id/tvTitle"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
             android:text="Start Session"
             android:textColor="@color/white"
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="20dp"
+            android:paddingVertical="12dp"
             app:layout_constraintTop_toTopOf="parent"
-            tools:layout_editor_absoluteX="0dp" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <FrameLayout
-            android:id="@+id/frameLayout"
-            android:layout_width="match_parent"
+        <!-- CAMERA CARD (Rounded Transparent Box like classroom cards) -->
+        <LinearLayout
+            android:id="@+id/layoutCameraCard"
+            android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginBottom="100dp"
-            android:layout_weight="3"
-            android:background="#000000"
-            app:layout_constraintBottom_toTopOf="@+id/tvClassCard"
-            app:layout_constraintTop_toBottomOf="@+id/tvTitle"
-            tools:layout_editor_absoluteX="8dp">
+            android:background="@drawable/white_transparent_card"
+            android:elevation="8dp"
+            android:orientation="vertical"
+            android:padding="12dp"
+            app:layout_constraintBottom_toTopOf="@id/tvClassCard"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHeight_default="percent"
+            app:layout_constraintHeight_percent="0.65"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvTitle">
 
-            <!-- Transparent Circular Overlay -->
-
-            <androidx.camera.view.PreviewView
-                android:id="@+id/viewFinder"
+            <!-- CAMERA PREVIEW -->
+            <FrameLayout
+                android:id="@+id/frameLayout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="center" />
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="#000000">
 
-            <View
-                android:id="@+id/faceGuide"
-                android:layout_width="250dp"
-                android:layout_height="250dp"
-                android:layout_gravity="center"
-                android:background="@drawable/circle_overlay" />
+                <androidx.camera.view.PreviewView
+                    android:id="@+id/viewFinder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
 
-            <!-- Lighting or Status Message -->
-            <TextView
-                android:id="@+id/tvLightWarning"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="top|center_horizontal"
-                android:padding="8dp"
-                android:text="Ensure proper lighting"
-                android:textColor="#FFEB3B"
-                android:textSize="16sp"
-                android:visibility="gone" />
-        </FrameLayout>
+                <!-- CIRCLE OVERLAY -->
+                <View
+                    android:id="@+id/faceGuide"
+                    android:layout_width="250dp"
+                    android:layout_height="250dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/circle_overlay" />
 
+                <!-- LIGHT WARNING -->
+                <TextView
+                    android:id="@+id/tvLightWarning"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|center_horizontal"
+                    android:padding="8dp"
+                    android:text="Ensure proper lighting"
+                    android:textColor="#FFEB3B"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
+            </FrameLayout>
 
-        <!-- Bottom Instruction (Centered Text) -->
+        </LinearLayout>
 
+        <!-- CLASSROOM LABEL -->
         <TextView
             android:id="@+id/tvClassCard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="56dp"
+            android:layout_marginBottom="16dp"
+            android:paddingTop="12dp"
             android:text="ClassRoom : "
             android:textColor="@color/white"
             android:textSize="18sp"
             app:layout_constraintBottom_toTopOf="@+id/tvStart"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.461"
             app:layout_constraintStart_toStartOf="parent" />
 
+        <!-- STATUS LABEL -->
         <TextView
             android:id="@+id/tvStart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="16dp"
             android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="16dp"
             android:text="Awaiting teacher face verification"
             android:textColor="@color/white"
             android:textSize="18sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

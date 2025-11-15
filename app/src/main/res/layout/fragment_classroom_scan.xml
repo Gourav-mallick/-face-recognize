@@ -3,56 +3,60 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_gradient"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="@drawable/bg_gradient">
 
-
-        <!-- Inner Layout Content -->
+    <!-- MAIN CONTENT CONTAINER -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_gradient"
-        android:padding="8dp"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="36dp">
+        android:padding="12dp"
+        android:background="@android:color/transparent">
 
-        <!-- Header -->
+        <!-- HEADER -->
         <TextView
             android:id="@+id/tvHeader"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
+            android:paddingVertical="12dp"
             android:text="Class-Room Attendance"
             android:textColor="@color/white"
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:textStyle="bold"
+            android:gravity="center"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- LAST SYNC LABEL -->
+        <TextView
+            android:id="@+id/tvLastSync"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Last Sync: --"
+            android:textColor="#E8EAED"
+            android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/tvHeader" />
 
-
-        <!-- Resume Info Section -->
+        <!-- TAP TO UPLOAD ATTENDANCE -->
         <LinearLayout
             android:id="@+id/layoutSyncStatus"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="15dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/white_transparent_card"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="8dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:padding="10dp"
+            app:layout_constraintBottom_toTopOf="@+id/tvStartClass"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.888"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvLastSync">
+            app:layout_constraintStart_toStartOf="parent">
 
             <TextView
                 android:id="@+id/tvSyncStatus"
@@ -60,20 +64,24 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Tap here to upload attendance"
-                android:textColor="#008000 "
-                android:textSize="18sp" />
+                android:gravity="center"
+                android:textColor="#1DB954"
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- RESUME INFO CARD -->
         <LinearLayout
             android:id="@+id/layoutResumeInfo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="#E8F0FF"
             android:orientation="vertical"
-            android:padding="12dp"
+            android:padding="14dp"
+            android:layout_marginTop="12dp"
             android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:background="@drawable/transparent_blue_card"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/layoutSyncStatus">
 
             <TextView
@@ -82,7 +90,7 @@
                 android:layout_height="wrap_content"
                 android:text="Resumed Class: -"
                 android:textColor="@color/white"
-                android:textSize="16sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -91,7 +99,8 @@
                 android:layout_height="wrap_content"
                 android:text="Teacher: -"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="15sp"
+                android:layout_marginTop="6dp"/>
 
             <TextView
                 android:id="@+id/tvResumeStudents"
@@ -99,83 +108,59 @@
                 android:layout_height="wrap_content"
                 android:text="Present Students: 0"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="15sp"
+                android:layout_marginTop="4dp"/>
         </LinearLayout>
 
-
-        <!-- Date, Time, Version Row -->
-
-        <TextView
-            android:id="@+id/tvLastSync"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="15dp"
-            android:text="Last Sync: --"
-            android:textColor="@color/white"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.034"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tvHeader" />
-
-
+        <!-- PENDING UNSUBMITTED -->
         <TextView
             android:id="@+id/tvUnsubmittedCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:gravity="center"
-            android:visibility="gone"
+            android:layout_marginTop="16dp"
             android:text="Pending Unsubmitted Classes: 0"
+            android:textSize="16sp"
             android:textColor="@color/white"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/layoutResumeInfo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- START CLASS BUTTON -->
+
+        <!-- FOOTER (SYNC, ENROLL, VERSION) -->
+        <Button
+            android:id="@+id/tvStartClass"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/btn_rounded"
+            android:text="Start Class"
+            android:textColor="@color/black"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.383"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <Button
-            android:id="@+id/tvStartClass"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_marginBottom="88dp"
-            android:background="@drawable/btn_rounded"
-            android:padding="10sp"
-            android:text="strat class"
-            android:textColor="@color/black"
-            android:textSize="14sp"
-            app:layout_constraintBottom_toTopOf="@+id/layoutDateTimeVersion"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.498"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent" />
 
         <LinearLayout
             android:id="@+id/layoutDateTimeVersion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="50dp"
+            android:layout_marginBottom="24dp"
             android:gravity="center_vertical"
-
             android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintBottom_toBottomOf="parent">
 
-            <!-- 🔄 Sync Button (Left) -->
             <Button
                 android:id="@+id/tvManualDataSync"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_gravity="center_vertical"
-                android:background="@drawable/btn_rounded"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@drawable/btn_transparent"
                 android:text="🔄"
-                android:textColor="@color/black"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                android:textColor="@color/white" />
 
-            <!-- Spacer pushes version to the right -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="0dp"
@@ -184,31 +169,28 @@
             <Button
                 android:id="@+id/tvEnrollUser"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_gravity="center_vertical"
-                android:background="@drawable/btn_rounded"
-                android:padding="10dp"
+                android:layout_height="42dp"
+                android:background="@drawable/btn_transparent"
+                android:paddingHorizontal="12dp"
                 android:text="Enroll"
-                android:textColor="@color/black"
-                android:textSize="14sp" />
+                android:textColor="@color/white"
+                android:textSize="15sp" />
 
-
-            <!-- Spacer pushes version to the right -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 android:layout_weight="1" />
 
-            <!-- 📄 Version Label (Right) -->
             <TextView
                 android:id="@+id/tvVersion"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
+                android:layout_height="42dp"
                 android:text="v1.51"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:background="@drawable/btn_transparent"
                 android:textColor="@color/white"
                 android:textSize="16sp" />
-
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

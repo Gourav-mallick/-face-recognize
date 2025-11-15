@@ -78,7 +78,7 @@
             android:layout_marginBottom="12dp"
             android:gravity="center"
             android:padding="12dp"
-            android:text="Tap student card / Other Card"
+            android:text="Please align your face inside the circle"
             android:textColor="@color/white"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/tvTeacherName"
