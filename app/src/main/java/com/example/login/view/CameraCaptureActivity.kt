@@ -4,6 +4,7 @@ import android.graphics.*
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -33,7 +34,7 @@ class CameraCaptureActivity : AppCompatActivity() {
     private val CROP_SCALE = 1.3f
 
     // NEW views
-  //  private lateinit var previewView: PreviewView
+    //  private lateinit var previewView: PreviewView
     private lateinit var overlayPanel: View
     private lateinit var dimView: View
     private lateinit var capturedImage: ImageView
@@ -42,6 +43,11 @@ class CameraCaptureActivity : AppCompatActivity() {
 
     // Hold last captured bitmap until user decides
     private var lastCaptured: Bitmap? = null
+
+
+    private var captureStep = 0  // 0=LEFT, 1=RIGHT, 2=CENTER
+    private val capturedBitmaps = arrayListOf<Bitmap>()
+    private lateinit var tvStep: TextView
 
 
     private val detector = FaceDetection.getClient(
@@ -61,34 +67,63 @@ class CameraCaptureActivity : AppCompatActivity() {
         capturedImage = findViewById(R.id.capturedImage)
         btnTryAgain = findViewById(R.id.btnTryAgain)
         btnSubmit = findViewById(R.id.btnSubmit)
+        tvStep = findViewById(R.id.tvStep)
 
         btnTryAgain.setOnClickListener {
             // hide overlay and resume analysis
             overlayPanel.visibility = View.GONE
             dimView.visibility = View.GONE
-            lastCaptured = null
+
+            captureStep = 0
+            capturedBitmaps.clear()
+            updateStepText()
+
             captured = false
             faceStableStart = 0L
+
             // nothing else needed; analyzer is still running
         }
 
         btnSubmit.setOnClickListener {
-            val bmp = lastCaptured ?: return@setOnClickListener
-            val stream = ByteArrayOutputStream()
-            bmp.compress(Bitmap.CompressFormat.JPEG, 95, stream)
-            val bytes = stream.toByteArray()
 
+            // 🔹 Must have 3 captured images
+            if (capturedBitmaps.size < 3) {
+                Toast.makeText(this, "Please complete all 3 captures", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // 🔹 Convert all 3 bitmaps to ByteArrays
+            val img1 = bitmapToBytes(capturedBitmaps[0])
+            val img2 = bitmapToBytes(capturedBitmaps[1])
+            val img3 = bitmapToBytes(capturedBitmaps[2])
+
+            // 🔹 Prepare reply intent
             val reply = intent
-            reply.putExtra("face_bytes", bytes)
+            reply.putExtra("face_img_1", img1)
+            reply.putExtra("face_img_2", img2)
+            reply.putExtra("face_img_3", img3)
+
+            // 🔹 Return to caller
             setResult(RESULT_OK, reply)
             finish()
         }
+
 
         startCamera()
     }
 
 
+    private fun bitmapToBytes(bmp: Bitmap): ByteArray {
+        val stream = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+        return stream.toByteArray()
+    }
+
+
+
     private fun startCamera() {
+        updateStepText()
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val provider = cameraProviderFuture.get()
@@ -116,8 +151,10 @@ class CameraCaptureActivity : AppCompatActivity() {
     }
 
     private fun analyzeAndCapture(imageProxy: ImageProxy) {
+
+        // 🔹 Rate-limit ML processing
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 300) { // ~3 FPS analysis
+        if (now - lastProcessTime < 300) {
             imageProxy.close()
             return
         }
@@ -129,7 +166,7 @@ class CameraCaptureActivity : AppCompatActivity() {
             return
         }
 
-        // Build a correctly oriented & mirrored bitmap ONCE
+        // 🔹 Convert camera frame to upright bitmap (EXISTING NEIGHBOR CODE)
         val rotated = imageProxyToBitmapUpright(imageProxy)
         val prepared = if (MIRROR_FRONT) mirrorBitmap(rotated) else rotated
 
@@ -137,34 +174,122 @@ class CameraCaptureActivity : AppCompatActivity() {
 
         detector.process(input)
             .addOnSuccessListener { faces ->
-                if (captured) return@addOnSuccessListener
+
+                // ----------------------------
+                // 🔹 IF OVERLAY IS OPEN (user deciding Try Again/Submit), DO NOTHING
+                // ----------------------------
+                if (overlayPanel.visibility == View.VISIBLE) {
+                    return@addOnSuccessListener
+                }
+
+                // ----------------------------
+                // 🔹 NO FACE FOUND → RESET
+                // ----------------------------
                 if (faces.isEmpty()) {
                     faceStableStart = 0L
                     return@addOnSuccessListener
                 }
 
-                // Require face stability for ~1.2s
+                val faceBox = faces[0].boundingBox
+
+                // ----------------------------
+                // 🔹 FACE MUST STAY STILL (same as old behavior)
+                // ----------------------------
                 val t = System.currentTimeMillis()
                 if (faceStableStart == 0L) faceStableStart = t
-                val stable = t - faceStableStart > 3000
+                val stable = t - faceStableStart > 3000   // 3 sec stillness (your old code)
 
                 if (!stable) return@addOnSuccessListener
 
-                val faceBox = faces[0].boundingBox
+                // ----------------------------
+                // 🔹 CROP FACE (EXISTING CODE)
+                // ----------------------------
                 val cropped = cropWithScale(prepared, faceBox, CROP_SCALE)
 
-                // === NEW: show preview & wait for user action ===
-                lastCaptured = cropped
-                captured = true                      // pause further auto captures
-                capturedImage.setImageBitmap(cropped)
-                dimView.visibility = View.VISIBLE
-                overlayPanel.visibility = View.VISIBLE
+                // ----------------------------
+                // 🔹 NEW: BLUR CHECK (reject blurry frames)
+                // ----------------------------
+                if (isBlurry(cropped)) {
+                    Toast.makeText(this, "Face is blurry — hold still", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                // ----------------------------
+                // 🔹 NEW MULTI-STEP CAPTURE
+                // ----------------------------
+                when (captureStep) {
+
+                    // =====================================
+                    // 🔵 STEP 0 → LEFT FACE CAPTURE
+                    // =====================================
+                    0 -> {
+                        capturedBitmaps.add(cropped)
+                        captureStep = 1
+                        tvStep.text = "Turn RIGHT and hold still"
+                        faceStableStart = 0L
+                        Toast.makeText(this, "Left captured", Toast.LENGTH_SHORT).show()
+                    }
+
+                    // =====================================
+                    // 🔵 STEP 1 → RIGHT FACE CAPTURE
+                    // =====================================
+                    1 -> {
+                        capturedBitmaps.add(cropped)
+                        captureStep = 2
+                        tvStep.text = "Look CENTER and hold still"
+                        faceStableStart = 0L
+                        Toast.makeText(this, "Right captured", Toast.LENGTH_SHORT).show()
+                    }
+
+                    // =====================================
+                    // 🔵 STEP 2 → CENTER FACE CAPTURE
+                    // =====================================
+                    2 -> {
+                        capturedBitmaps.add(cropped)
+
+                        // 🔹 All 3 images done → show preview UI
+                        lastCaptured = cropped
+                        captured = true
+                        dimView.visibility = View.VISIBLE
+                        overlayPanel.visibility = View.VISIBLE
+                        capturedImage.setImageBitmap(cropped)
+
+                        tvStep.text = "All photos captured"
+                    }
+                }
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Face detect error: ${it.message}", Toast.LENGTH_SHORT).show()
             }
             .addOnCompleteListener { imageProxy.close() }
     }
+
+
+    private fun updateStepText() {
+        when (captureStep) {
+            0 -> tvStep.text = "Turn LEFT and hold still"
+            1 -> tvStep.text = "Turn RIGHT and hold still"
+            2 -> tvStep.text = "Look CENTER and hold still"
+        }
+    }
+
+
+    private fun isBlurry(bmp: Bitmap): Boolean {
+        val w = bmp.width
+        val h = bmp.height
+        var sum = 0
+        var count = 0
+        for (x in 0 until w step 10) {
+            for (y in 0 until h step 10) {
+                val pixel = bmp.getPixel(x, y)
+                sum += Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)
+                count++
+            }
+        }
+        val avg = sum / (count * 3)
+        return avg < 40  // low contrast → blurry
+    }
+
 
     // --- Helpers ---
 

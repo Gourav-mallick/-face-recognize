@@ -57,9 +57,11 @@
                 android:layout_marginTop="12dp"
                 android:background="@drawable/bg_container"
                 android:hint="Username"
-                android:inputType="textPersonName"
                 android:padding="12dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:inputType="textNoSuggestions"
+                android:autofillHints=""
+                android:importantForAutofill="no"/>
 
             <EditText
                 android:id="@+id/edtPassword"
@@ -70,7 +72,9 @@
                 android:hint="Password"
                 android:inputType="textPassword"
                 android:padding="12dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:autofillHints=""
+                android:importantForAutofill="no"/>
 
             <Button
                 android:id="@+id/btnLogin"

@@ -217,10 +217,10 @@ class TeacherScanFragment : Fragment() {
                     isVerifying = true
 
                     sessionCreated = true
-                    // ✅ Valid teacher recognized
+                    //  Valid teacher recognized
                     Toast.makeText(requireContext(), "Welcome, $bestName", Toast.LENGTH_SHORT).show()
 
-                    // 🔹 Wait 5 seconds, then navigate to StudentScanFragment
+                    //  Wait 5 seconds, then navigate to StudentScanFragment
                     view?.postDelayed({
                         (requireActivity() as AttendanceActivity).simulateTeacherScan(bestId!!)
                     }, 2000)

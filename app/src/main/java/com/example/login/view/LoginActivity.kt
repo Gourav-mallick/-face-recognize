@@ -3,6 +3,7 @@ package com.example.login.view
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -28,21 +29,43 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+
+        // ❌ Block screenshots + screen recording
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+
         val edtUrl = findViewById<EditText>(R.id.edtUrl)
         val edtUser = findViewById<EditText>(R.id.edtUsername)
         val edtPass = findViewById<EditText>(R.id.edtPassword)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+        }
+
+        disableCopyPaste(edtUser)
+        disableCopyPaste(edtPass)
+
 
         // 🔹 Autofill saved login details if available
         val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
-        edtUrl.setText(prefs.getString("baseUrl", ""))
-        edtUser.setText(prefs.getString("username", ""))
-        edtPass.setText(prefs.getString("password", ""))
 
+   /*
+           edtUrl.setText(prefs.getString("baseUrl", ""))
+           edtUser.setText(prefs.getString("username", ""))
+           edtPass.setText(prefs.getString("password", ""))
+
+    */
 
         btnLogin.setOnClickListener {
-            val baseUrl = edtUrl.text.toString().trim()
+            var baseUrl = edtUrl.text.toString().trim()
+            // AUTO CORRECT URL BASED ON YOUR 3 RULES
+            baseUrl = normalizeBaseUrl(baseUrl)
+            // Update textbox and continue login
+            edtUrl.setText(baseUrl)
+
             val username = edtUser.text.toString().trim()
             val password = edtPass.text.toString().trim()
 
@@ -228,4 +251,50 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
+
+
+
+    private fun normalizeBaseUrl(input: String): String {
+        var url = input.trim().removeSuffix("/")
+
+        // CASE 1: only subdomain (testvps)
+        if (!url.startsWith("http") && !url.contains(".")) {
+            return "https://$url.digitaledu.in"
+        }
+
+        // CASE 2: starts with https://testvps (missing .digitaledu.in)
+        if (url.startsWith("https://") && !url.contains(".digitaledu.in")) {
+            val clean = url.removePrefix("https://")
+            return "https://$clean.digitaledu.in"
+        }
+
+        // CASE 3: testvps.digitaledu.in (missing https://)
+        if (!url.startsWith("https://") && url.contains(".digitaledu.in")) {
+            return "https://$url"
+        }
+
+        // Already correct
+        return url
+    }
+
+
+    private fun disableCopyPaste(editText: EditText) {
+
+        // Block long-click context menu (Cut, Copy, Paste)
+        editText.setOnLongClickListener { true }
+        editText.setLongClickable(false)
+
+        // Block selection handles
+        editText.setTextIsSelectable(false)
+
+        // Block keyboard suggestions like "Paste"
+        editText.customSelectionActionModeCallback = object : android.view.ActionMode.Callback {
+            override fun onCreateActionMode(mode: android.view.ActionMode?, menu: android.view.Menu?) = false
+            override fun onPrepareActionMode(mode: android.view.ActionMode?, menu: android.view.Menu?) = false
+            override fun onActionItemClicked(mode: android.view.ActionMode?, item: android.view.MenuItem?) = false
+            override fun onDestroyActionMode(mode: android.view.ActionMode?) {}
+        }
+    }
+
+
 }

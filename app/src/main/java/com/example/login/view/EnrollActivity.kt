@@ -44,10 +44,8 @@ class EnrollActivity : AppCompatActivity() {
 
     private lateinit var editName: EditText
     private lateinit var btnEnrollFace: Button
-
     private var selectedStudent: Student? = null
     private var selectedTeacher: Teacher? = null
-
     private val DIST_THRESHOLD = 0.80f
 
     private lateinit var listUsers: ListView
@@ -63,14 +61,53 @@ class EnrollActivity : AppCompatActivity() {
     ) { result ->
         try {
             if (result.resultCode == RESULT_OK) {
-                val bytes = result.data?.getByteArrayExtra("face_bytes")
-                if (bytes != null) {
-                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                    val embedding = FaceNetHelper(this).getFaceEmbedding(bmp)
-                    val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
-                    if (id != null) saveFace(id, embedding)
+
+                // -----------------------------
+                // 🔹 Get all 3 images from camera
+                // -----------------------------
+                val img1 = result.data?.getByteArrayExtra("face_img_1")
+                val img2 = result.data?.getByteArrayExtra("face_img_2")
+                val img3 = result.data?.getByteArrayExtra("face_img_3")
+
+                if (img1 == null || img2 == null || img3 == null) {
+                    Toast.makeText(this, "Capture failed (missing images)", Toast.LENGTH_LONG).show()
+                    return@registerForActivityResult
                 }
+
+                // -----------------------------
+                // 🔹 Convert to Bitmaps
+                // -----------------------------
+                val bmp1 = BitmapFactory.decodeByteArray(img1, 0, img1.size)
+                val bmp2 = BitmapFactory.decodeByteArray(img2, 0, img2.size)
+                val bmp3 = BitmapFactory.decodeByteArray(img3, 0, img3.size)
+
+                // -----------------------------
+                // 🔹 Generate embeddings
+                // -----------------------------
+                val helper = FaceNetHelper(this)
+                val e1 = helper.getFaceEmbedding(bmp1)
+                val e2 = helper.getFaceEmbedding(bmp2)
+                val e3 = helper.getFaceEmbedding(bmp3)
+
+                // -----------------------------
+                // 🔹 AVERAGE embedding (final stored)
+                // -----------------------------
+                val avgEmbedding = FloatArray(e1.size) { i ->
+                    (e1[i] + e2[i] + e3[i]) / 3f
+                }
+
+                val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
+                if (id == null) {
+                    Toast.makeText(this, "User ID missing", Toast.LENGTH_SHORT).show()
+                    return@registerForActivityResult
+                }
+
+                // -----------------------------
+                // 🔹 Save final averaged embedding
+                // -----------------------------
+                saveFace(id, avgEmbedding)
             }
+
         } catch (e: Exception) {
             Toast.makeText(this, "Error during face capture: ${e.message}", Toast.LENGTH_LONG).show()
             Log.e("EnrollActivity", "Face capture error", e)
@@ -119,6 +156,12 @@ class EnrollActivity : AppCompatActivity() {
             val query = it.toString().trim().lowercase()
 
             if (query.isEmpty()) {
+                // 🔥 Clear selection
+                editName.setText("")
+                selectedStudent = null
+                selectedTeacher = null
+
+                // 🔥 Clear dropdown
                 hideDropdown()
                 filteredNames.clear()
                 adapter.notifyDataSetChanged()
@@ -129,13 +172,22 @@ class EnrollActivity : AppCompatActivity() {
 
             val type = selectedUserType()
             filteredNames.addAll(
-                if (type == "student")
-                    allStudents.filter { s -> s.studentName.lowercase().contains(query) }
-                        .map { "${it.studentName} (${it.studentId})" }
-                else
-                    allTeachers.filter { t -> t.staffName.lowercase().contains(query) }
-                        .map { "${it.staffName} (${it.staffId})" }
+                if (type == "student") {
+
+                    allStudents.filter { s ->
+                        s.studentName.lowercase().contains(query) ||
+                                s.studentId.lowercase().contains(query)
+                    }.map { "${it.studentName} (${it.studentId})" }
+
+                } else {
+
+                    allTeachers.filter { t ->
+                        t.staffName.lowercase().contains(query) ||
+                                t.staffId.lowercase().contains(query)
+                    }.map { "${it.staffName} (${it.staffId})" }
+                }
             )
+
 
             listUsers.visibility = View.VISIBLE
             adapter.notifyDataSetChanged()
@@ -150,8 +202,9 @@ class EnrollActivity : AppCompatActivity() {
             val name = selected.substringBefore("(").trim()
             val id = selected.substringAfter("(").removeSuffix(")").trim()
 
-            editSearchId.setText(name)
-            editName.setText(name)
+            // editSearchId.setText("$name ($id)")
+            editName.setText("$name ($id)")
+
 
             val type = selectedUserType()
             if (type == "student") {
@@ -163,7 +216,16 @@ class EnrollActivity : AppCompatActivity() {
             }
 
             hideDropdown()
+
+            // 🔥 NEW: Hide keyboard
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.hideSoftInputFromWindow(editSearchId.windowToken, 0)
+
+            // 🔥 NEW: Remove focus from EditText so keyboard does NOT reopen
+            editSearchId.clearFocus()
+            editName.clearFocus()
         }
+
 
         // Hide list when clicking outside
         findViewById<FrameLayout>(R.id.rootLayout).setOnClickListener {
