@@ -202,10 +202,13 @@ class SelectInstituteActivity : AppCompatActivity() {
                     val studentsDataFatchOk = repository.fetchAndSaveStudents(apiService, db, instIds)
                     val teachersDataFatchOk = repository.fetchAndSaveTeachers(apiService, db, instIds)
                     val subjectsDataFatchOk = repository.syncSubjectInstances(apiService, db)
+                    val scheduleDataOk = repository.fetchAndSaveStudentSchedulingData(apiService, db, instIds)
+
                     val deviceDataFatchOk = fetchDeviceDataToServer(apiService, db, normalizedBaseUrl, instIds)
                     Log.d(TAG, "All data synced and device config stored locally.")
 
-                    val allApiCallOk = studentsDataFatchOk && teachersDataFatchOk && subjectsDataFatchOk && deviceDataFatchOk
+                    val allApiCallOk = studentsDataFatchOk && teachersDataFatchOk && subjectsDataFatchOk &&
+                    scheduleDataOk &&deviceDataFatchOk
                     delay(2000)
                     withContext(Dispatchers.Main) {
                         progressBar.visibility = ProgressBar.GONE

@@ -214,6 +214,61 @@ class DataSyncRepository(private val context: Context) {
     }
 
 
+    suspend fun fetchAndSaveStudentSchedulingData(
+        apiService: ApiService,
+        db: AppDatabase,
+        instIds: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val rParam = "api/v1/Schedule/GetStudList"
+            val dataParam =
+                "{\"schedulingParamData\":{\"actionType\":\"FingerPrint\",\"school_id\":\"$instIds\"}}"
+
+            val response = apiService.getStudentScheduleList(rParam, dataParam)
+
+            if (!response.isSuccessful || response.body() == null) {
+                Log.e(TAG, "SCHEDULE_API_FAILED: ${response.errorBody()?.string()}")
+                return@withContext false
+            }
+
+            val jsonString = response.body()!!.string()
+            Log.d(TAG, "RAW_SCHEDULE_JSON: $jsonString")
+
+            val json = JSONObject(jsonString)
+            val dataArray = json
+                .optJSONObject("collection")
+                ?.optJSONObject("response")
+                ?.optJSONArray("studentSchedulingData") ?: JSONArray()
+
+            val scheduleList = mutableListOf<StudentSchedule>()
+
+            for (i in 0 until dataArray.length()) {
+                val obj = dataArray.getJSONObject(i)
+                scheduleList.add(
+                    StudentSchedule(
+                        scheduleId = obj.optString("scheduleId", ""),
+                        studentId = obj.optString("studentId", ""),
+                        cpId = obj.optString("cpId", ""),
+                        courseId = obj.optString("courseId", ""),
+                        scheduleStartDate = obj.optString("scheduleStartDate", ""),
+                        scheduleEndDate = obj.optString("scheduleEndDate", "")
+                    )
+                )
+            }
+
+            db.studentScheduleDao().clear()
+            db.studentScheduleDao().insertAll(scheduleList)
+            Log.d(TAG, "Saved ${scheduleList.size} student schedule rows")
+            return@withContext true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "SCHEDULE_EXCEPTION: ${e.message}")
+            return@withContext false
+        }
+    }
+
+
+
     private fun showToast(message: String) {
         Handler(context.mainLooper).post {
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()

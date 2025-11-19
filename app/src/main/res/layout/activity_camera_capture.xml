@@ -1,21 +1,203 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
-    <!--  Live camera preview  -->
-    <androidx.camera.view.PreviewView android:id="@+id/previewView" android:layout_width="match_parent" android:layout_height="match_parent"/>
-    <TextView android:id="@+id/tvStep" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="40dp" android:text="Turn LEFT and hold still" android:textSize="22sp" android:textColor="#FFFFFF" android:layout_gravity="center"/>
-    <!--  Dark mask to dim background when a shot is taken  -->
-    <View android:id="@+id/dimView" android:visibility="gone" android:background="#80000000" android:layout_width="match_parent" android:layout_height="match_parent"/>
-    <!--  Capture overlay (shown AFTER auto-capture)  -->
-    <LinearLayout android:id="@+id/overlayPanel" android:visibility="gone" android:orientation="vertical" android:gravity="center_horizontal" android:padding="24dp" android:layout_width="match_parent" android:layout_height="match_parent">
-        <!--  Captured face preview  -->
-        <ImageView android:id="@+id/capturedImage" android:layout_width="260dp" android:layout_height="260dp" android:scaleType="centerCrop" android:background="#20000000" android:layout_marginBottom="20dp"/>
-        <!--  Buttons row  -->
-        <LinearLayout android:orientation="horizontal" android:gravity="center" android:layout_width="wrap_content" android:layout_height="wrap_content">
-            <Button android:id="@+id/btnTryAgain" android:layout_width="140dp" android:layout_height="44dp" android:text="Try Again" android:layout_marginEnd="12dp"/>
-            <Button android:id="@+id/btnSubmit" android:layout_width="140dp" android:layout_height="44dp" android:text="Submit"/>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_gradient"
+    android:padding="16dp">
+
+    <!-- INNER CONTAINER -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="12dp">
+
+        <!-- HEADER -->
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Face Capture"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="20dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- CAMERA CARD (rounded) -->
+        <LinearLayout
+            android:id="@+id/layoutCameraCard"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/white_transparent_card"
+            android:elevation="8dp"
+            android:orientation="vertical"
+            android:padding="12dp"
+            app:layout_constraintTop_toBottomOf="@id/tvTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHeight_default="percent"
+            app:layout_constraintHeight_percent="0.70">
+
+            <!-- CAMERA PREVIEW -->
+            <FrameLayout
+                android:id="@+id/frameCamera"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="#000">
+
+                <androidx.camera.view.PreviewView
+                    android:id="@+id/previewView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"/>
+
+                <!-- Step Text (CENTERED) -->
+                <TextView
+                    android:id="@+id/tvStep"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Turn LEFT and hold still"
+                    android:textSize="22sp"
+                    android:textColor="#FFFFFF"
+                    android:layout_gravity="center"/>
+
+
+                <!-- FACE POSITION ARROWS -->
+                <LinearLayout
+                    android:id="@+id/layoutArrows"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="24dp">
+
+                    <ImageView
+                        android:id="@+id/ivLeftArrow"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_arrow_left_white"
+                        app:tint="#FFC107"
+                        android:layout_marginEnd="20dp"/>
+
+                    <ImageView
+                        android:id="@+id/ivCenterArrow"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/outline_align_flex_center_24"
+                        app:tint="#FFC107"
+                        android:layout_marginEnd="20dp"/>
+
+                    <ImageView
+                        android:id="@+id/ivRightArrow"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_arrow_right_white"
+                        app:tint="#FFC107"/>
+                </LinearLayout>
+
+
+                <!-- Dim Overlay -->
+                <View
+                    android:id="@+id/dimView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone"
+                    android:background="#80000000"/>
+            </FrameLayout>
+
         </LinearLayout>
-        <!--  Enrollment state text (optional; controlled by caller)  -->
-        <TextView android:id="@+id/tvEnrollState" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="20dp"/>
-        <TextView android:id="@+id/tvEnrollName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textColor="#FFFFFF"/>
-    </LinearLayout>
-</FrameLayout>
+
+        <!-- BOTTOM SECTION = SAME AS FRAGMENT LAYOUT -->
+
+        <!-- Status Label (same position style as 'Awaiting teacher face verification') -->
+        <TextView
+            android:id="@+id/tvClass"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Processing Face..."
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/layoutCameraCard"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <TextView
+            android:id="@+id/tvUserInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:layout_marginTop="4dp"
+            app:layout_constraintTop_toBottomOf="@id/tvClass"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+
+        <!-- OVERLAY PANEL - FULL SCREEN - ALWAYS ON TOP -->
+        <LinearLayout
+            android:id="@+id/overlayPanel"
+            android:visibility="gone"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp"
+            android:background="#AA000000"
+            android:elevation="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/capturedImage"
+                android:layout_width="260dp"
+                android:layout_height="260dp"
+                android:layout_marginBottom="20dp"
+                android:scaleType="centerCrop"
+                android:background="#20000000" />
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <Button
+                    android:id="@+id/btnTryAgain"
+                    android:layout_width="140dp"
+                    android:layout_height="44dp"
+                    android:text="Cancel"
+                    android:layout_marginEnd="12dp" />
+
+                <Button
+                    android:id="@+id/btnSubmit"
+                    android:layout_width="140dp"
+                    android:layout_height="44dp"
+                    android:text="Submit" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvEnrollState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginTop="20dp" />
+
+            <TextView
+                android:id="@+id/tvEnrollName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

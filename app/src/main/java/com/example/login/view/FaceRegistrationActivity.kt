@@ -1,7 +1,9 @@
 package com.example.login.view
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -35,7 +37,7 @@ import kotlinx.coroutines.delay
 import androidx.core.widget.addTextChangedListener
 
 
-class EnrollActivity : AppCompatActivity() {
+class FaceRegistrationActivity : AppCompatActivity() {
 
     private lateinit var radioUserType: RadioGroup
     private lateinit var radioActionType: RadioGroup
@@ -62,9 +64,9 @@ class EnrollActivity : AppCompatActivity() {
         try {
             if (result.resultCode == RESULT_OK) {
 
-                // -----------------------------
+
                 // 🔹 Get all 3 images from camera
-                // -----------------------------
+
                 val img1 = result.data?.getByteArrayExtra("face_img_1")
                 val img2 = result.data?.getByteArrayExtra("face_img_2")
                 val img3 = result.data?.getByteArrayExtra("face_img_3")
@@ -81,13 +83,25 @@ class EnrollActivity : AppCompatActivity() {
                 val bmp2 = BitmapFactory.decodeByteArray(img2, 0, img2.size)
                 val bmp3 = BitmapFactory.decodeByteArray(img3, 0, img3.size)
 
+
+
+                //  ADD THIS MIRRORING (Same as Teacher & Student scan)
+                fun mirrorBitmap(src: Bitmap): Bitmap {
+                    val m = Matrix().apply { preScale(-1f, 1f) }
+                    return Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
+                }
+
+                val bmp1m = mirrorBitmap(bmp1)
+                val bmp2m = mirrorBitmap(bmp2)
+                val bmp3m = mirrorBitmap(bmp3)
+
                 // -----------------------------
                 // 🔹 Generate embeddings
                 // -----------------------------
                 val helper = FaceNetHelper(this)
-                val e1 = helper.getFaceEmbedding(bmp1)
-                val e2 = helper.getFaceEmbedding(bmp2)
-                val e3 = helper.getFaceEmbedding(bmp3)
+                val e1 = helper.getFaceEmbedding(bmp1m)
+                val e2 = helper.getFaceEmbedding(bmp2m)
+                val e3 = helper.getFaceEmbedding(bmp3m)
 
                 // -----------------------------
                 // 🔹 AVERAGE embedding (final stored)
@@ -116,7 +130,7 @@ class EnrollActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_enroll)
+        setContentView(R.layout.activity_face_registration)
 
         radioUserType = findViewById(R.id.radioUserType)
         radioActionType = findViewById(R.id.radioActionType)
@@ -139,7 +153,7 @@ class EnrollActivity : AppCompatActivity() {
 
     private fun loadLocalUsers() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(this@EnrollActivity)
+            val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
             allStudents = db.studentsDao().getAllStudents()
             allTeachers = db.teachersDao().getAllTeachers()
         }
@@ -156,12 +170,12 @@ class EnrollActivity : AppCompatActivity() {
             val query = it.toString().trim().lowercase()
 
             if (query.isEmpty()) {
-                // 🔥 Clear selection
+                //  Clear selection
                 editName.setText("")
                 selectedStudent = null
                 selectedTeacher = null
 
-                // 🔥 Clear dropdown
+                //  Clear dropdown
                 hideDropdown()
                 filteredNames.clear()
                 adapter.notifyDataSetChanged()
@@ -217,11 +231,11 @@ class EnrollActivity : AppCompatActivity() {
 
             hideDropdown()
 
-            // 🔥 NEW: Hide keyboard
+            //  NEW: Hide keyboard
             val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
             imm.hideSoftInputFromWindow(editSearchId.windowToken, 0)
 
-            // 🔥 NEW: Remove focus from EditText so keyboard does NOT reopen
+            //  NEW: Remove focus from EditText so keyboard does NOT reopen
             editSearchId.clearFocus()
             editName.clearFocus()
         }
@@ -236,8 +250,6 @@ class EnrollActivity : AppCompatActivity() {
     private fun hideDropdown() {
         listUsers.visibility = View.GONE
     }
-
-
 
 
     private fun selectedUserType(): String {
@@ -256,10 +268,6 @@ class EnrollActivity : AppCompatActivity() {
             else -> "none"
         }
     }
-
-
-
-
 
     private fun handleActionClick() {
         try {
@@ -287,13 +295,13 @@ class EnrollActivity : AppCompatActivity() {
                 // Step 2: Check internet
                 val hasInternet = withContext(Dispatchers.IO) { CheckNetworkAndInternetUtils.hasInternetAccess() }
                 if (!hasInternet) {
-                    Toast.makeText(this@EnrollActivity, "No active Internet!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FaceRegistrationActivity, "No active Internet!", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 // Step 3: Show progress while syncing
-                val dialog = android.app.AlertDialog.Builder(this@EnrollActivity)
-                    .setTitle("Preparing for Enrollment")
+                val dialog = android.app.AlertDialog.Builder(this@FaceRegistrationActivity)
+                    .setTitle("Preparing for Registration")
                     .setMessage("Syncing with server, please wait...")
                     .setCancelable(false)
                     .create()
@@ -305,7 +313,7 @@ class EnrollActivity : AppCompatActivity() {
 
                 if (!synced) {
                     Toast.makeText(
-                        this@EnrollActivity,
+                        this@FaceRegistrationActivity,
                         "Sync failed or timed out. Try again later.",
                         Toast.LENGTH_LONG
                     ).show()
@@ -313,7 +321,13 @@ class EnrollActivity : AppCompatActivity() {
                 }
 
                 // Step 5: Proceed with face capture only if sync completed
-                val intent = Intent(this@EnrollActivity, CameraCaptureActivity::class.java)
+                val intent = Intent(this@FaceRegistrationActivity, CameraCaptureActivity::class.java)
+
+                val name = selectedStudent?.studentName ?: selectedTeacher?.staffName ?: ""
+                val id = selectedStudent?.studentId ?: selectedTeacher?.staffId ?: ""
+
+                intent.putExtra("user_name", name)
+                intent.putExtra("user_id", id)
                 liveCaptureLauncher.launch(intent)
             }
         } catch (e: Exception) {
@@ -326,7 +340,7 @@ class EnrollActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // check connection before server call
-                if (!CheckNetworkAndInternetUtils.isNetworkAvailable(this@EnrollActivity)) {
+                if (!CheckNetworkAndInternetUtils.isNetworkAvailable(this@FaceRegistrationActivity)) {
                     showMainToast("No network connection!")
                     return@launch
                 }
@@ -335,7 +349,7 @@ class EnrollActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val db = AppDatabase.getDatabase(this@EnrollActivity)
+                val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
                 val embedStr = embedding?.joinToString(",")
                 val userType = selectedUserType()
                 val action = selectedActionType()
@@ -350,11 +364,11 @@ class EnrollActivity : AppCompatActivity() {
                     if (match != null) {
                         val (type, name, matchedId) = match
                         if (matchedId != id) {
-                            showMainToast("Enroll already belongs to $type $name")
+                            showMainToast("Registered User belongs to $type $name")
                             return@launch
                         }
                         if (action == "add") {
-                            showMainToast("This user already has an Enroll. Use Update instead.")
+                            showMainToast("This user already Registered..")
                             return@launch
                         }
                     }
@@ -363,7 +377,7 @@ class EnrollActivity : AppCompatActivity() {
                 when (action) {
                     "add" -> {
                         if (!existingEmbedding.isNullOrEmpty()) {
-                            showMainToast("Face already exists. Use Update instead.")
+                            showMainToast("Face already exists.")
                             return@launch
                         }
                         if (embedding == null) return@launch
@@ -372,12 +386,12 @@ class EnrollActivity : AppCompatActivity() {
 
                     "update" -> {
                         if (existingEmbedding.isNullOrEmpty()) {
-                            showMainToast("No existing face found. Use Add instead.")
+                            showMainToast("No existing face found.")
                             return@launch
                         }
                         if (embedding == null) return@launch
                         val storedEmbedding = existingEmbedding.split(",").map { it.toFloat() }.toFloatArray()
-                        val distSelf = FaceNetHelper(this@EnrollActivity)
+                        val distSelf = FaceNetHelper(this@FaceRegistrationActivity)
                             .calculateDistance(storedEmbedding, embedding)
                         if (distSelf >= DIST_THRESHOLD) {
                             showMainToast("Face does not match the existing face.")
@@ -387,8 +401,20 @@ class EnrollActivity : AppCompatActivity() {
                     }
 
                     "delete" -> {
-                        showMainToast("Delete logic placeholder.")
+                        if (existingEmbedding.isNullOrEmpty()) {
+                            showMainToast("No face registered for this user.")
+                            return@launch
+                        }
+
+                        if (userType == "student") {
+                            db.studentsDao().updateStudentEmbedding(id, "")
+                        } else {
+                            db.teachersDao().updateTeacherEmbedding(id, "")
+                        }
+
+                        showMainToast("Face deleted successfully.")
                     }
+
                 }
 
                 val updated =
@@ -396,23 +422,23 @@ class EnrollActivity : AppCompatActivity() {
                     else db.teachersDao().getTeacherById(id)
 
                 Log.d("EnrollActivity", "Updated Record → $updated")
-                showMainToast("Action $action completed successfully.")
+                showMainToast("User Registration $action successfully.")
             } catch (e: Exception) {
                 Log.e("EnrollActivity", "saveFace error", e)
-                showMainToast("Error: ${e.message}")
+                showMainToast(" some error occurred, please try again")
             }
         }
     }
 
     private suspend fun showMainToast(msg: String) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(this@EnrollActivity, msg, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@FaceRegistrationActivity, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
     private suspend fun detectMatchingFace(
         newEmbedding: FloatArray,
-        threshold: Float = 0.80f
+        threshold: Float = DIST_THRESHOLD
     ): Triple<String, String, String>? {
         return try {
             val db = AppDatabase.getDatabase(this)
@@ -488,7 +514,7 @@ class EnrollActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 if (!response.isSuccessful) {
-                    Toast.makeText(this@EnrollActivity, "HTTP error: ${response.code()}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@FaceRegistrationActivity, "HTTP error: ${response.code()}", Toast.LENGTH_LONG).show()
                     return@withContext
                 }
 
@@ -501,21 +527,21 @@ class EnrollActivity : AppCompatActivity() {
                 val successStatus = resp?.optString("successStatus", "FALSE") ?: "FALSE"
 
                 if (successStatus.equals("TRUE", ignoreCase = true)) {
-                    Toast.makeText(this@EnrollActivity, "Face synced to server!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@FaceRegistrationActivity, "Face synced to server!", Toast.LENGTH_LONG).show()
 
                     // 🔹 Trigger local DB sync automatically
                     val workRequest = OneTimeWorkRequestBuilder<AutoSyncWorker>()
                         .setInitialDelay(3, TimeUnit.SECONDS) // Optional delay
                         .build()
 
-                    WorkManager.getInstance(this@EnrollActivity).enqueue(workRequest)
+                    WorkManager.getInstance(this@FaceRegistrationActivity).enqueue(workRequest)
                 } else {
-                    Toast.makeText(this@EnrollActivity, "Server rejected data!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@FaceRegistrationActivity, "Server rejected data!", Toast.LENGTH_LONG).show()
                 }
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@EnrollActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@FaceRegistrationActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
             Log.e("EnrollActivity", "sendFaceToServer error", e)
         }
@@ -534,7 +560,7 @@ class EnrollActivity : AppCompatActivity() {
                     .build()
 
                 // Run unique sync job so we don't start duplicates
-                WorkManager.getInstance(this@EnrollActivity)
+                WorkManager.getInstance(this@FaceRegistrationActivity)
                     .enqueueUniqueWork(
                         "PreEnrollSync",
                         ExistingWorkPolicy.KEEP,
@@ -544,7 +570,7 @@ class EnrollActivity : AppCompatActivity() {
                 val workId = workRequest.id
                 var waited = 0
                 while (waited < 30000) { // 30 sec timeout
-                    val info = WorkManager.getInstance(this@EnrollActivity)
+                    val info = WorkManager.getInstance(this@FaceRegistrationActivity)
                         .getWorkInfoById(workId).get()
                     when (info?.state) {
                         WorkInfo.State.SUCCEEDED -> return@withContext true

@@ -52,11 +52,15 @@ class TeacherScanFragment : Fragment() {
 
 
 
-    private val DIST_THRESHOLD = 0.80f     // keep same as activity
-    private val CROP_SCALE = 1.3f
+    private val DIST_THRESHOLD = 0.60f     // keep same as activity
+    private val CROP_SCALE = 1.1f
     private val MIRROR_FRONT = true
 
     private var sessionCreated = false
+
+
+    private var failCount = 0          // count failed attempts
+    private val MAX_FAILS = 3          // set how many tries allowed
 
 
     companion object {
@@ -124,7 +128,7 @@ class TeacherScanFragment : Fragment() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 100) {
+        if (now - lastProcessTime < 130) {
             imageProxy.close(); return
         }
         lastProcessTime = now
@@ -187,7 +191,7 @@ class TeacherScanFragment : Fragment() {
             val teachers = db.teachersDao().getAllTeachers() // has embedding String? field
             if (teachers.isEmpty()) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "No teachers enrolled", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "No teachers Found!", Toast.LENGTH_SHORT).show()
                     progress.visibility = View.GONE; isVerifying = false
                 }
                 return@launch
@@ -218,15 +222,42 @@ class TeacherScanFragment : Fragment() {
 
                     sessionCreated = true
                     //  Valid teacher recognized
-                    Toast.makeText(requireContext(), "Welcome, $bestName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Welcome, $bestName", Toast.LENGTH_LONG).show()
 
                     //  Wait 5 seconds, then navigate to StudentScanFragment
                     view?.postDelayed({
                         (requireActivity() as AttendanceActivity).simulateTeacherScan(bestId!!)
                     }, 2000)
                 } else {
-                    Toast.makeText(requireContext(), "You are not a teacher", Toast.LENGTH_SHORT).show()
+
+                    failCount++
+
+                    if (failCount >= MAX_FAILS) {
+
+                        Toast.makeText(
+                            requireContext(),
+                            "Face not recognized.\nYou are not enrolled any class.\nPlease contact authority to Enroll.",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        // OPTIONAL: stop scanning for 3 seconds
+                        isVerifying = true
+                        view?.postDelayed({
+                            isVerifying = false
+                            failCount = 0   // reset so next teacher can try
+                        }, 3000)
+
+                        return@withContext
+                    }
+
+                    // Normal fail toast
+                    Toast.makeText(
+                        requireContext(),
+                        "Face not matched. Adjust your face and try again.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
+
             }
         }
     }
@@ -312,6 +343,7 @@ class TeacherScanFragment : Fragment() {
 
         val left = face.leftEyeOpenProbability ?: -1f
         val right = face.rightEyeOpenProbability ?: -1f
+       // Toast.makeText(requireContext(), "Blink your Eyes", Toast.LENGTH_SHORT).show()
 
         Log.d("BLINK_DEBUG", "Left=$left Right=$right")
 

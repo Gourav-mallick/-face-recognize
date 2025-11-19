@@ -15,6 +15,7 @@ import com.example.login.db.entity.Class
 import com.example.login.db.entity.CourseFullInfo
 import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.Session
+import com.example.login.db.entity.StudentSchedule
 import com.example.login.db.entity.TeacherClassMap
 
 
@@ -236,6 +237,22 @@ interface SessionDao {
     suspend fun deleteSessionById(sessionId: String)
 
 }
+
+
+@Dao
+interface StudentScheduleDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<StudentSchedule>)
+
+    @Query("SELECT * FROM student_schedule")
+    suspend fun getAll(): List<StudentSchedule>
+
+    @Query("DELETE FROM student_schedule")
+    suspend fun clear()
+}
+
+
 
 
 @Dao

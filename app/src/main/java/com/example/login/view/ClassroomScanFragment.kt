@@ -31,6 +31,7 @@ import com.example.login.api.ApiService
 import com.example.login.db.entity.Session
 
 
+
 class ClassroomScanFragment : Fragment() {
 
     private lateinit var tvSyncStatus: TextView
@@ -78,12 +79,15 @@ class ClassroomScanFragment : Fragment() {
                 .show()
         }
 
+
+
+
         //face recognize enrollment
         val tvEnrollUser=view.findViewById<Button>(R.id.tvEnrollUser)
         tvEnrollUser.setOnClickListener {
             AlertDialog.Builder(requireContext())
-                .setTitle("Enroll User")
-                .setMessage("Do you want to Enroll User?")
+                .setTitle("Registration User")
+                .setMessage("Do you want to Registration User Face?")
                 .setPositiveButton("Yes") { _, _ ->
                     showAuthDialogForEnrollment()
                 }
@@ -262,7 +266,7 @@ class ClassroomScanFragment : Fragment() {
             if (enteredUser == savedUser && enteredPass == savedPass) {
                 dialog.dismiss()
                 // Call EnrollActivity here
-                val intent = Intent(requireContext(), EnrollActivity::class.java)
+                val intent = Intent(requireContext(), FaceRegistrationActivity::class.java)
                 startActivity(intent)
             } else {
                 Toast.makeText(requireContext(), "Invalid credentials!", Toast.LENGTH_SHORT).show()
@@ -319,10 +323,12 @@ class ClassroomScanFragment : Fragment() {
                 val studentsOk = repository.fetchAndSaveStudents(apiService, db, instIds)
                 val teachersOk = repository.fetchAndSaveTeachers(apiService, db, instIds)
                 val subjectsOk = repository.syncSubjectInstances(apiService, db)
+                val scheduleOk = repository.fetchAndSaveStudentSchedulingData(apiService, db, instIds)
+
 
                 withContext(Dispatchers.Main) {
                     progressDialog.dismiss()
-                    if (studentsOk && teachersOk && subjectsOk) {
+                    if (studentsOk && teachersOk && subjectsOk && scheduleOk) {
                         Toast.makeText(
                             requireContext(),
                             " Sync Successful , Data synced and updated in local database.",
@@ -331,7 +337,7 @@ class ClassroomScanFragment : Fragment() {
                     } else {
                         Toast.makeText(
                             requireContext(),
-                            "⚠️ Some data failed to sync. Try again.",
+                            " Some data failed to sync. Try again.",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -342,7 +348,7 @@ class ClassroomScanFragment : Fragment() {
                     progressDialog.dismiss()
                     Toast.makeText(
                         requireContext(),
-                        "❌ Sync failed: ${e.message}",
+                        " Sync failed: ${e.message}",
                         Toast.LENGTH_LONG
                     ).show()
                 }

@@ -1,14 +1,18 @@
 package com.example.login.view
 
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.login.R
 import com.example.login.databinding.ActivityPeriodCourseSelectBinding
 import com.example.login.db.dao.AppDatabase
 import kotlinx.coroutines.launch
@@ -59,27 +63,34 @@ class SubjectSelectActivity : ComponentActivity() {
         binding.btnContinue.setOnClickListener {
             handleContinue()
         }
-   /*
-        binding.checkboxAddManualCourse.setOnCheckedChangeListener { _, isChecked ->
-            binding.inputManualCourseTitle.visibility = if (isChecked) android.view.View.VISIBLE else android.view.View.GONE
-        }
 
-    */
     }
 
-    /*
-    // 🔹 Predefined period dropdown (later can be dynamic)
-    private fun setupPeriodDropdown() {
-        val periodList = listOf("1", "2", "3", "4", "5", "6")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, periodList)
-        binding.spinnerPeriod.adapter = adapter
-    }
-     */
+
 
     // 🔹 Load courses from DB
     private fun loadCourses() {
         lifecycleScope.launch {
-            val courses = db.courseDao().getAllCourses()
+            val teacherId = db.sessionDao().getSessionById(sessionId)?.teacherId ?: ""
+
+            // 1) Find cpIds assigned to this teacher
+            val assignedCoursePeriods = db.coursePeriodDao().getAllCoursePeriods()
+                .filter { it.teacherId == teacherId }
+
+            val teacherCourseIds = assignedCoursePeriods.map { it.courseId }.toSet()
+
+            val courses = if (teacherCourseIds.isNotEmpty()) {
+                // only load courses which belong to teacher
+                db.courseDao().getAllCourses().filter { course ->
+                    teacherCourseIds.contains(course.courseId)
+                }
+            } else {
+                db.courseDao().getAllCourses()
+            }
+
+
+            Log.d("CourseSelectActivity", "Courses: $courses")
+
 
             val adapter = SubjectSelectAdapter(courses) { selectedIds ->
                 selectedCourseIds.clear()
@@ -91,91 +102,101 @@ class SubjectSelectActivity : ComponentActivity() {
         }
     }
 
+
     // 🔹 Handle "Continue" button click
     private fun handleContinue() {
-
-    /*
-        val selectedPeriod = binding.spinnerPeriod.selectedItem?.toString()
-        if (selectedPeriod.isNullOrEmpty()) {
-            Toast.makeText(this, "Please select a period", Toast.LENGTH_SHORT).show()
-            return
-        }
-     */
-
-
-     //   val isManual = binding.checkboxAddManualCourse.isChecked
-      //  val manualCourseName = binding.inputManualCourseTitle.text.toString().trim()
-
 
         lifecycleScope.launch {
             val db = AppDatabase.getDatabase(this@SubjectSelectActivity)
             val isMultiClass = selectedClasses.size > 1
 
-/*
-            if (isManual) {
-                if (manualCourseName.isEmpty()) {
-                    Toast.makeText(this@PeriodCourseSelectActivity, "Please enter manual course name", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
 
-                // 🔹 Create dummy IDs
-                val dummyCpId = java.util.UUID.randomUUID().toString().take(4)
-                val dummyCourseId = java.util.UUID.randomUUID().toString().take(4)
-                val dummySubjectId = java.util.UUID.randomUUID().toString().take(4)
-
-                // 🔹 Update session + attendance with dummy data
-                for (classId in selectedClasses) {
-                    db.attendanceDao().updateAttendanceWithCourseDetails(
-                        sessionId = sessionId,
-                        cpId = dummyCpId,
-                        courseId = dummyCourseId,
-                        courseTitle = manualCourseName,
-                        subjectId = dummySubjectId,
-                        courseShortName = manualCourseName.take(6).uppercase(),
-                        subjectTitle = manualCourseName,
-                        classShortName = classId,
-                        mpId = "${System.currentTimeMillis()}",
-                        mpLongTitle = "Manual Added",
-                        period = selectedPeriod
-                    )
-                }
-
-                db.sessionDao().updateSessionPeriodAndSubject(sessionId, selectedPeriod, dummyCourseId)
-
-                Toast.makeText(this@PeriodCourseSelectActivity, "Manual course added successfully", Toast.LENGTH_SHORT).show()
-
-                // 🔹 Clear resume flag when proceeding
-                getSharedPreferences("APP_STATE", MODE_PRIVATE)
-                    .edit()
-                    .remove("IS_IN_PERIOD_SELECT")
-                    .remove("SESSION_ID")
-                    .apply()
-
-                val intent =
-                    Intent(this@PeriodCourseSelectActivity, AttendanceOverviewActivity::class.java)
-                intent.putStringArrayListExtra("SELECTED_CLASSES", ArrayList(selectedClasses))
-                intent.putExtra("SESSION_ID", sessionId)
-                startActivity(intent)
-                finish()
+            // 1) Get selected CPIDs from selected courses
+            val selectedCourseInfo = db.courseDao().getCourseDetailsForIds(selectedCourseIds)
+            val selectedCpIds = selectedCourseInfo
+                .mapNotNull { it.cpId }
+                .toSet()
 
 
+            // 2) Get only present students for this session (FIX: mapNotNull)
+            val sessionAttendances = db.attendanceDao().getAttendancesForSession(sessionId)
+            val studentsInSession = sessionAttendances.mapNotNull { att ->
+                db.studentsDao().getStudentById(att.studentId)
+            }
 
+           // 3) Load all student schedules
+            val schedules = db.studentScheduleDao().getAll()
 
+          // 4) Correct match logic
+            val notEnrolledStudents = studentsInSession.filter { student ->
+
+                val studentCpIds = schedules
+                    .filter { it.studentId == student.studentId }
+                    .map { it.cpId }
+                    .toSet()
+                // Student is NOT enrolled if intersection is empty
+                (studentCpIds.intersect(selectedCpIds)).isEmpty()
             }
 
 
- */
+            //  5) Show popup BUT do not stop flow
+
+            if (notEnrolledStudents.isNotEmpty()) {
+
+                val details = notEnrolledStudents.joinToString("\n") { s ->
+                    "${s.studentName} - ${s.studentId}"
+                }
+
+                val count = notEnrolledStudents.size
+
+                val inflater = LayoutInflater.from(this@SubjectSelectActivity)
+                val view = inflater.inflate(R.layout.dialog_scroll_list, null)
+                view.findViewById<TextView>(R.id.tvDetails).text = details
+
+                AlertDialog.Builder(this@SubjectSelectActivity)
+                    .setTitle("Students Not Schedule ($count)")
+                    .setView(view)
+                    .setPositiveButton("OK") { _, _ ->
+                        continueAndSaveSelectedCourse()     // CONTINUE AFTER CLICK
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                        dialog.dismiss()                 // STOP - do NOTHING
+                    }
+                    .setCancelable(false)
+                    .show()
+
+                return@launch   // STOP UNTIL OK
+            }
+
+
+            //  NOT ENROLLED = ZERO → flow continues automatically
+            continueAndSaveSelectedCourse()
+
+        }
+
+
+    }
+
+
+    private fun continueAndSaveSelectedCourse() {
+
+        lifecycleScope.launch {
+
+            val db = AppDatabase.getDatabase(this@SubjectSelectActivity)
             val isMultiCourse = selectedCourseIds.size > 1
             val isNoCourse = selectedCourseIds.isEmpty()
 
             try {
+
                 when {
-                    //  CASE 1 / 2C — No course selected → Manual subject instance
                     isNoCourse -> {
-                        Toast.makeText(this@SubjectSelectActivity, "Please select or add a course", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@SubjectSelectActivity,
+                            "Please select or add a course",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
 
-                    //  CASE 1B / 2B — Multiple courses selected
                     isMultiCourse -> {
                         val courseDetails = db.courseDao().getCourseDetailsForIds(selectedCourseIds)
 
@@ -194,7 +215,6 @@ class SubjectSelectActivity : ComponentActivity() {
                         val combinedMpIds = courseDetails.mapNotNull { it.mpId }.distinct().joinToString(",")
                         val combinedMpLongTitles = courseDetails.mapNotNull { it.mpLongTitle }.distinct().joinToString(",")
 
-                        // 🔹 Apply combined details to all selected classes
                         for (classId in selectedClasses) {
                             db.attendanceDao().updateAttendanceWithCourseDetails(
                                 sessionId = sessionId,
@@ -206,35 +226,23 @@ class SubjectSelectActivity : ComponentActivity() {
                                 subjectTitle = combinedSubjectTitles,
                                 classShortName = combinedClassShortNames,
                                 mpId = combinedMpIds,
-                                mpLongTitle = combinedMpLongTitles,
-                                //period = selectedPeriod
+                                mpLongTitle = combinedMpLongTitles
                             )
                         }
 
-                        db.sessionDao().updateSessionPeriodAndSubject(sessionId,  combinedCourseIds)
-
-
-
-                        Toast.makeText(this@SubjectSelectActivity, "Maltiple course added successfully", Toast.LENGTH_SHORT).show()
+                        db.sessionDao().updateSessionPeriodAndSubject(sessionId, combinedCourseIds)
 
                         val intent = Intent(this@SubjectSelectActivity, AttendanceOverviewActivity::class.java)
                         intent.putStringArrayListExtra("SELECTED_CLASSES", ArrayList(selectedClasses))
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
 
-                   // Delay clearing prefs slightly to prevent race condition
-                        lifecycleScope.launch {
-                            kotlinx.coroutines.delay(500)
-                            getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
-                            getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
-                            finish()
-                        }
-
-
-
+                        kotlinx.coroutines.delay(500)
+                        getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                        getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+                        finish()
                     }
 
-                    // CASE 1A / 2A — Single course selected
                     else -> {
                         val courseId = selectedCourseIds.first()
                         val courseDetails = db.courseDao().getCourseDetailsForIds(listOf(courseId)).firstOrNull()
@@ -255,45 +263,26 @@ class SubjectSelectActivity : ComponentActivity() {
                                 subjectTitle = courseDetails.subjectTitle,
                                 classShortName = courseDetails.classShortName,
                                 mpId = courseDetails.mpId,
-                                mpLongTitle = courseDetails.mpLongTitle,
-                              //  period = selectedPeriod
+                                mpLongTitle = courseDetails.mpLongTitle
                             )
                         }
 
-                        db.sessionDao().updateSessionPeriodAndSubject(sessionId,  courseId)
-
-                        Toast.makeText(this@SubjectSelectActivity, "single course attendance added successfully", Toast.LENGTH_SHORT).show()
+                        db.sessionDao().updateSessionPeriodAndSubject(sessionId, courseId)
 
                         val intent = Intent(this@SubjectSelectActivity, AttendanceOverviewActivity::class.java)
                         intent.putStringArrayListExtra("SELECTED_CLASSES", ArrayList(selectedClasses))
                         intent.putExtra("SESSION_ID", sessionId)
                         startActivity(intent)
 
-                      //  Delay clearing prefs slightly to prevent race condition
-                        lifecycleScope.launch {
-                            kotlinx.coroutines.delay(500)
-                            getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
-                            getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
-                            finish()
-                        }
-
-
-
+                        kotlinx.coroutines.delay(500)
+                        getSharedPreferences("APP_STATE", MODE_PRIVATE).edit().clear().apply()
+                        getSharedPreferences("AttendancePrefs", MODE_PRIVATE).edit().clear().apply()
+                        finish()
                     }
-                }
-
-                //  Optional: Log final attendance
-                val allAttendance = db.attendanceDao().getAllAttendance()
-                for (record in allAttendance) {
-                    Log.d(
-                        "AttendanceLog",
-                        "Student: ${record.studentId}, Class: ${record.classId}, Status: ${record.status}, Courses: ${record.courseId}, Session: ${record.sessionId}"
-                    )
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(this@SubjectSelectActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

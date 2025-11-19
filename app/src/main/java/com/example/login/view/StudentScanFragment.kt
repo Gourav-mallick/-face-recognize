@@ -62,9 +62,13 @@ class StudentScanFragment : Fragment() {
 
     private lateinit var faceNet: FaceNetHelper
 
-    private val DIST_THRESHOLD = 0.80f
-    private val CROP_SCALE = 1.3f
+    private val DIST_THRESHOLD = 0.60f
+    private val CROP_SCALE = 1.1f
     private val MIRROR_FRONT = true
+
+    private var studentFailCount = 0
+    private val MAX_STUDENT_FAILS = 3   // or 4 if you want
+
 
     //Add a preloaded cache
     private val cachedStudentEmbeddings = mutableListOf<Triple<String, String, FloatArray>>()
@@ -129,8 +133,9 @@ class StudentScanFragment : Fragment() {
     }
 
     // -----------------------------------------------------------------------
-    // CAMERA LOGIC (same as TeacherScanFragment)
+    // CAMERA LOGIC
     // -----------------------------------------------------------------------
+
     private fun startCamera() {
         val providerFuture = ProcessCameraProvider.getInstance(requireContext())
         providerFuture.addListener({
@@ -171,7 +176,7 @@ class StudentScanFragment : Fragment() {
 
     private fun processFrame(imageProxy: ImageProxy) {
         val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 120) {
+        if (now - lastProcessTime < 130) {
             imageProxy.close()
             return
         }
@@ -209,7 +214,7 @@ class StudentScanFragment : Fragment() {
                             val elapsed = System.currentTimeMillis() - faceStableStart
                             faceGuide.background.setTint(if (elapsed >= 300) Color.GREEN else Color.YELLOW)
 
-                            if (elapsed >= 800 && !isVerifying) {
+                            if (elapsed >= 1000 && !isVerifying) {
                                 isVerifying = true
 
                                 lifecycleScope.launch(Dispatchers.Default) {
@@ -238,7 +243,7 @@ class StudentScanFragment : Fragment() {
     }
 
     // -----------------------------------------------------------------------
-    // FACE MATCHING LOGIC (Option A: use teachers.embedding + students.embedding)
+    // FACE MATCHING LOGIC ( use teachers.embedding + students.embedding)
     // -----------------------------------------------------------------------
     private fun verifyFace(faceEmbedding: FloatArray) {
         lifecycleScope.launch {
@@ -288,16 +293,42 @@ class StudentScanFragment : Fragment() {
             withContext(Dispatchers.Main) {
 
                 //If no match OR match is too far
-                if (bestMatchId == null || minDist >= DIST_THRESHOLD) {
-                    toast("This student does not belong to the selected class.")
+
+                if (!bestIsTeacher && (bestMatchId == null || minDist >= DIST_THRESHOLD)) {
+
+                    studentFailCount++
+
+                    if (studentFailCount >= MAX_STUDENT_FAILS) {
+
+                        Toast.makeText(
+                            requireContext(),
+                            "You are not enrolled for this class.\nPlease contact administration and enroll.",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        // Stop verification temporarily to prevent spam scanning
+                        isVerifying = true
+
+                        // Reset after 3 seconds so next student can try
+                        view?.postDelayed({
+                            isVerifying = false
+                            studentFailCount = 0
+                        }, 1000)
+
+                        done()
+                        return@withContext
+                    }
+
+                    toast("Face not matched. Adjust your face and try again.")
                     done()
                     return@withContext
                 }
 
+
                 // 1) If the best match is a teacher
                 if (bestIsTeacher) {
                     if (bestMatchId == teacherId) {
-                        // ✅ Check if there are any students marked present in this session
+                        //  Check if there are any students marked present in this session
                         lifecycleScope.launch(Dispatchers.IO) {
                             val db = AppDatabase.getDatabase(requireContext())
                             val attendanceCount = db.attendanceDao().getAttendancesForSession(sessionIdArg).size
@@ -306,7 +337,7 @@ class StudentScanFragment : Fragment() {
                                 withContext(Dispatchers.Main) {
                                     AlertDialog.Builder(requireContext())
                                         .setTitle("Close Class?")
-                                        .setMessage("No students are marked present in this class.\nDo you want to close and return to the start screen?")
+                                        .setMessage("No students are present in this class.\nDo you want to close?")
                                         .setPositiveButton("Yes") { dialog, _ ->
                                             dialog.dismiss()
                                             lifecycleScope.launch(Dispatchers.IO) {
@@ -422,7 +453,7 @@ class StudentScanFragment : Fragment() {
 
 
     // -----------------------------------------------------------------------
-    // SMALL UTILITIES for Reset eye probabilities when face changes
+    //  UTILITIES for Reset eye probabilities when face changes
     // -----------------------------------------------------------------------
     private fun done() {
         isVerifying = false

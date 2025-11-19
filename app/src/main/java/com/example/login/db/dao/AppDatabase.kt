@@ -14,6 +14,7 @@ import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.Session
 import com.example.login.db.entity.ActiveClassCycle
 import com.example.login.db.entity.TeacherClassMap
+import com.example.login.db.entity.StudentSchedule
 
 
 
@@ -28,7 +29,8 @@ import com.example.login.db.entity.TeacherClassMap
     Session::class,
     Attendance::class,
     ActiveClassCycle::class,
-    TeacherClassMap::class
+    TeacherClassMap::class,
+    StudentSchedule::class
     ],
     version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
@@ -43,6 +45,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun attendanceDao(): AttendanceDao
     abstract fun activeClassCycleDao(): ActiveClassCycleDao
     abstract fun teacherClassMapDao(): TeacherClassMapDao
+
+    abstract fun studentScheduleDao(): StudentScheduleDao
 
 
 

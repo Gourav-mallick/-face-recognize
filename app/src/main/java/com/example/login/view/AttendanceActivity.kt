@@ -480,6 +480,9 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
             Log.d("SYNC_DEBUG_attandance", "Attendance: $attendance")
             db.attendanceDao().insertAttendance(attendance)
+
+            showUserMessage("Attendance marked for ${student.studentName}")
+
             saveCurrentCycle()
             val frag = supportFragmentManager.findFragmentByTag(TAG_STUDENT)
             if (frag is StudentScanFragment) frag.addStudentUI(student)

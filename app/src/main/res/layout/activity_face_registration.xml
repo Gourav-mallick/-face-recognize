@@ -21,7 +21,7 @@
                 android:id="@+id/tvEnrollHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Enrollment"
+                android:text="Registration"
                 android:textStyle="bold"
                 android:textSize="24sp"
                 android:textColor="@color/white"
@@ -168,13 +168,61 @@
                     android:layout_height="50dp"
                     android:layout_marginTop="20dp"
                     android:background="@drawable/btn_rounded"
-                    android:text="Enroll Face"
+                    android:text="Register Face"
                     android:textSize="16sp"
                     android:textColor="@color/black" />
 
             </LinearLayout>
 
+
+            <!-- FACE CAPTURE INSTRUCTIONS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/white_transparent_card"
+                android:padding="16dp"
+                android:layout_marginTop="18dp"
+                android:elevation="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Instructions Before Capturing"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1) Turn face slightly LEFT"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2) Turn face slightly RIGHT"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3) Keep your face CENTERED"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"/>
+            </LinearLayout>
+
+
         </LinearLayout>
+
+
+
     </ScrollView>
 
 </FrameLayout>

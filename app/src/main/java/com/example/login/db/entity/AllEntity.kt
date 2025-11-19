@@ -75,6 +75,17 @@ data class TeacherClassMap(
 )
 
 
+@Entity(tableName = "student_schedule")
+data class StudentSchedule(
+    @PrimaryKey val scheduleId: String,
+    val studentId: String,
+    val cpId: String,
+    val courseId: String,
+    val scheduleStartDate: String,
+    val scheduleEndDate: String?
+)
+
+
 @Entity(tableName = "sessions")
 @Parcelize
 data class Session(

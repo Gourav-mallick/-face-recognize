@@ -31,7 +31,7 @@ class CameraCaptureActivity : AppCompatActivity() {
 
     // Front camera is mirrored in UX; we mirror BEFORE detection & embedding for consistency
     private val MIRROR_FRONT = true
-    private val CROP_SCALE = 1.3f
+    private val CROP_SCALE = 1.1f
 
     // NEW views
     //  private lateinit var previewView: PreviewView
@@ -49,6 +49,9 @@ class CameraCaptureActivity : AppCompatActivity() {
     private val capturedBitmaps = arrayListOf<Bitmap>()
     private lateinit var tvStep: TextView
 
+    private lateinit var ivLeftArrow: ImageView
+    private lateinit var ivCenterArrow: ImageView
+    private lateinit var ivRightArrow: ImageView
 
     private val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
@@ -68,6 +71,18 @@ class CameraCaptureActivity : AppCompatActivity() {
         btnTryAgain = findViewById(R.id.btnTryAgain)
         btnSubmit = findViewById(R.id.btnSubmit)
         tvStep = findViewById(R.id.tvStep)
+
+        ivLeftArrow = findViewById(R.id.ivLeftArrow)
+        ivCenterArrow = findViewById(R.id.ivCenterArrow)
+        ivRightArrow = findViewById(R.id.ivRightArrow)
+
+        val tvUserInfo = findViewById<TextView>(R.id.tvUserInfo)
+
+        val name = intent.getStringExtra("user_name") ?: ""
+        val id = intent.getStringExtra("user_id") ?: ""
+
+        tvUserInfo.text = "$name ($id)"
+
 
         btnTryAgain.setOnClickListener {
             // hide overlay and resume analysis
@@ -192,23 +207,23 @@ class CameraCaptureActivity : AppCompatActivity() {
 
                 val faceBox = faces[0].boundingBox
 
-                // ----------------------------
+
                 // 🔹 FACE MUST STAY STILL (same as old behavior)
-                // ----------------------------
+
                 val t = System.currentTimeMillis()
                 if (faceStableStart == 0L) faceStableStart = t
-                val stable = t - faceStableStart > 3000   // 3 sec stillness (your old code)
+                val stable = t - faceStableStart > 2000   // 1.2 sec stillness (your old code)
 
                 if (!stable) return@addOnSuccessListener
 
-                // ----------------------------
+
                 // 🔹 CROP FACE (EXISTING CODE)
-                // ----------------------------
+
                 val cropped = cropWithScale(prepared, faceBox, CROP_SCALE)
 
-                // ----------------------------
+
                 // 🔹 NEW: BLUR CHECK (reject blurry frames)
-                // ----------------------------
+
                 if (isBlurry(cropped)) {
                     Toast.makeText(this, "Face is blurry — hold still", Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
@@ -219,31 +234,34 @@ class CameraCaptureActivity : AppCompatActivity() {
                 // ----------------------------
                 when (captureStep) {
 
-                    // =====================================
-                    // 🔵 STEP 0 → LEFT FACE CAPTURE
-                    // =====================================
+
+                    //  STEP 0 → LEFT FACE CAPTURE
+
                     0 -> {
                         capturedBitmaps.add(cropped)
                         captureStep = 1
-                        tvStep.text = "Turn RIGHT and hold still"
                         faceStableStart = 0L
                         Toast.makeText(this, "Left captured", Toast.LENGTH_SHORT).show()
+
+                        updateStepText()   //  HIGHLIGHT RIGHT ARROW
                     }
 
-                    // =====================================
-                    // 🔵 STEP 1 → RIGHT FACE CAPTURE
-                    // =====================================
+
+
+                    //  STEP 1 → RIGHT FACE CAPTURE
+
                     1 -> {
                         capturedBitmaps.add(cropped)
                         captureStep = 2
-                        tvStep.text = "Look CENTER and hold still"
                         faceStableStart = 0L
                         Toast.makeText(this, "Right captured", Toast.LENGTH_SHORT).show()
+
+                        updateStepText()   // ⭐ HIGHLIGHT CENTER ARROW
                     }
 
-                    // =====================================
-                    // 🔵 STEP 2 → CENTER FACE CAPTURE
-                    // =====================================
+
+                    //  STEP 2 → CENTER FACE CAPTURE
+
                     2 -> {
                         capturedBitmaps.add(cropped)
 
@@ -267,11 +285,27 @@ class CameraCaptureActivity : AppCompatActivity() {
 
     private fun updateStepText() {
         when (captureStep) {
-            0 -> tvStep.text = "Turn LEFT and hold still"
-            1 -> tvStep.text = "Turn RIGHT and hold still"
-            2 -> tvStep.text = "Look CENTER and hold still"
+            0 -> {
+                tvStep.text = "Turn LEFT and hold still"
+                ivLeftArrow.alpha = 1f
+                ivCenterArrow.alpha = 0.1f
+                ivRightArrow.alpha = 0.1f
+            }
+            1 -> {
+                tvStep.text = "Turn RIGHT and hold still"
+                ivLeftArrow.alpha = 0.1f
+                ivCenterArrow.alpha = 0.1f
+                ivRightArrow.alpha = 1f
+            }
+            2 -> {
+                tvStep.text = "Look CENTER and hold still"
+                ivLeftArrow.alpha = 0.1f
+                ivCenterArrow.alpha = 1f
+                ivRightArrow.alpha = 0.1f
+            }
         }
     }
+
 
 
     private fun isBlurry(bmp: Bitmap): Boolean {

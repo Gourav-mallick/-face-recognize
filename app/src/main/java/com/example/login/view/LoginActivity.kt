@@ -30,7 +30,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
 
-        // ❌ Block screenshots + screen recording
+        //  Block screenshots + screen recording
         window.setFlags(
             android.view.WindowManager.LayoutParams.FLAG_SECURE,
             android.view.WindowManager.LayoutParams.FLAG_SECURE
@@ -52,12 +52,7 @@ class LoginActivity : AppCompatActivity() {
         // 🔹 Autofill saved login details if available
         val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
 
-   /*
-           edtUrl.setText(prefs.getString("baseUrl", ""))
-           edtUser.setText(prefs.getString("username", ""))
-           edtPass.setText(prefs.getString("password", ""))
 
-    */
 
         btnLogin.setOnClickListener {
             var baseUrl = edtUrl.text.toString().trim()

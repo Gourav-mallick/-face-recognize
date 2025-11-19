@@ -58,7 +58,7 @@
         <activity android:name=".view.AttendanceOverviewActivity"/>
         <activity android:name=".view.SyncAttendanceToServer"/>
 
-        <activity android:name=".view.EnrollActivity" />
+        <activity android:name=".view.FaceRegistrationActivity" />
         <activity android:name=".view.CameraCaptureActivity"
             android:exported="false" />
 

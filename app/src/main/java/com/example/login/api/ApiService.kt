@@ -49,6 +49,13 @@ interface ApiService {
     ): Response<ResponseBody>
 
 
+    @GET("sims-services/digitalsims/")
+    suspend fun getStudentScheduleList(
+        @Query("r") r: String = "api/v1/Schedule/GetStudList",
+        @Query("data") data: String
+    ): Response<ResponseBody>
+
+
     @POST("sims-services/digitalsims/")
     suspend fun postAttendanceSync(
         @Query("r") r: String = "api/v1/Att/ManageMarkingGlobalAtt",
