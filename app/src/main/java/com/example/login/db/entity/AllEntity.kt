@@ -82,7 +82,45 @@ data class StudentSchedule(
     val cpId: String,
     val courseId: String,
     val scheduleStartDate: String,
-    val scheduleEndDate: String?
+    val scheduleEndDate: String?,
+    val syncStatus: String = "pending"
+)
+
+
+
+@Entity(tableName = "pending_scheduling")
+data class PendingScheduleEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
+    val school_id: String,
+    val syear: String,
+    val marking_period_id: String,
+    val mp: String,
+
+    val class_id: String,
+    val class_title: String,
+
+    val subjectId: String,
+    val headId: String,
+
+    val course_id: String,
+    val course_period_id: String,
+    val cp_title: String,
+
+    val teacher_id: String,
+    val teacher_name: String,
+
+    val student_id: String,
+    val student_name: String,
+
+    val start_date: String,
+    val created_by: String,
+
+    val isCreateScheduling: String,
+    val isUpdateScheduling: String,
+
+    val syncStatus: String = "pending"
 )
 
 

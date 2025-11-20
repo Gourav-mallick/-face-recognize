@@ -71,4 +71,11 @@ interface ApiService {
 
 
 
+    @POST("sims-services/digitalsims/")
+    suspend fun postStudentSubjectSchedule(
+        @Query("r") r: String = "api/v1/SubjectManager/ManageStudentSubjectScheduling",
+        @Body body: RequestBody
+    ): Response<ResponseBody>
+
+
 }

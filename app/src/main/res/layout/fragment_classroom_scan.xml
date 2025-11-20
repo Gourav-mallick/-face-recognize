@@ -130,7 +130,6 @@
 
         <!-- START CLASS BUTTON -->
 
-        <!-- FOOTER (SYNC, ENROLL, VERSION) -->
 
         <Button
             android:id="@+id/tvStartClass"

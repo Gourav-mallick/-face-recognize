@@ -14,6 +14,7 @@ import com.example.login.db.entity.Teacher
 import com.example.login.db.entity.Class
 import com.example.login.db.entity.CourseFullInfo
 import com.example.login.db.entity.CoursePeriod
+import com.example.login.db.entity.PendingScheduleEntity
 import com.example.login.db.entity.Session
 import com.example.login.db.entity.StudentSchedule
 import com.example.login.db.entity.TeacherClassMap
@@ -193,6 +194,10 @@ interface CoursePeriodDao {
 
     @Query("SELECT * FROM course_periods")
     suspend fun getAllCoursePeriods(): List<CoursePeriod>
+
+    @Query("SELECT * FROM course_periods WHERE cpId = :cpId LIMIT 1")
+    suspend fun getCoursePeriodByCpId(cpId: String): CoursePeriod?
+
 }
 
 
@@ -247,6 +252,10 @@ interface StudentScheduleDao {
 
     @Query("SELECT * FROM student_schedule")
     suspend fun getAll(): List<StudentSchedule>
+
+
+    @Query("UPDATE student_schedule SET syncStatus = :status WHERE scheduleId = :scheduleId")
+    fun updateSyncStatus(scheduleId: String, status: String)
 
     @Query("DELETE FROM student_schedule")
     suspend fun clear()
@@ -371,6 +380,12 @@ interface AttendanceDao {
     @Query("DELETE FROM Attendance WHERE sessionId = :sessionId")
     suspend fun deleteAttendanceForSession(sessionId: String)
 
+
+
+
+    @Query("DELETE FROM attendance WHERE sessionId = :sessionId AND studentId = :studentId")
+    suspend fun deleteAttendanceForStudent(sessionId: String, studentId: String)
+
 }
 
 
@@ -389,3 +404,24 @@ interface ActiveClassCycleDao {
     @Query("DELETE FROM ActiveClassCycle WHERE classroomId = :classroomId")
     suspend fun deleteByClassroomId(classroomId: String)
 }
+
+
+@Dao
+interface PendingScheduleDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSchedule(item: PendingScheduleEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<PendingScheduleEntity>)
+
+    @Query("SELECT * FROM pending_scheduling WHERE syncStatus = 'pending'")
+    suspend fun getPendingSchedules(): List<PendingScheduleEntity>
+
+    @Query("UPDATE pending_scheduling SET syncStatus = :status WHERE id = :id")
+    suspend fun updateSyncStatus(id: Long, status: String)
+
+    @Delete
+    suspend fun delete(item: PendingScheduleEntity)
+}
+

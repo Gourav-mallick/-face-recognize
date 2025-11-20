@@ -348,7 +348,7 @@ class ClassroomScanFragment : Fragment() {
                     progressDialog.dismiss()
                     Toast.makeText(
                         requireContext(),
-                        " Sync failed: ${e.message}",
+                        " Server timeout. Please try again later.",
                         Toast.LENGTH_LONG
                     ).show()
                 }

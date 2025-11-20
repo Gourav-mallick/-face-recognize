@@ -39,10 +39,12 @@ import android.os.Handler
 import android.os.Looper
 import com.example.login.db.entity.ActiveClassCycle
 import android.Manifest
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.work.OneTimeWorkRequest
+import com.example.login.utility.NetworkReceiver
 
 
 class AttendanceActivity : AppCompatActivity() {
@@ -95,7 +97,6 @@ class AttendanceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_attendance)
 
-
         WorkManager.getInstance(this)
             .enqueue(OneTimeWorkRequest.from(AutoSyncWorker::class.java))
 
@@ -114,7 +115,7 @@ class AttendanceActivity : AppCompatActivity() {
             // 🔹 Restore screen if app was killed mid-session
             val statePrefs = getSharedPreferences("APP_STATE", MODE_PRIVATE)
 
-            // ✅ If cleared or missing, always start fresh
+            //  If cleared or missing, always start fresh
             val currentScreen = statePrefs.getString("CURRENT_SCREEN", null)
 
             when (currentScreen) {
@@ -149,6 +150,8 @@ class AttendanceActivity : AppCompatActivity() {
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "HourlySync", ExistingPeriodicWorkPolicy.KEEP, request
         )
+
+
 
         // Restore pending sessions (endTime empty) into activeClasses
        restorePendingSessions()

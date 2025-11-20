@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.util.Log
 import android.widget.Toast
+import com.example.login.api.ApiClient
 import com.example.login.api.ApiService
 import com.example.login.db.dao.AppDatabase
 import com.example.login.db.entity.*
@@ -12,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
 
 class DataSyncRepository(private val context: Context) {
 
@@ -251,12 +253,12 @@ class DataSyncRepository(private val context: Context) {
                         cpId = obj.optString("cpId", ""),
                         courseId = obj.optString("courseId", ""),
                         scheduleStartDate = obj.optString("scheduleStartDate", ""),
-                        scheduleEndDate = obj.optString("scheduleEndDate", "")
+                        scheduleEndDate = obj.optString("scheduleEndDate", ""),
+                        syncStatus = "complete"
                     )
                 )
             }
 
-            db.studentScheduleDao().clear()
             db.studentScheduleDao().insertAll(scheduleList)
             Log.d(TAG, "Saved ${scheduleList.size} student schedule rows")
             return@withContext true
@@ -274,5 +276,121 @@ class DataSyncRepository(private val context: Context) {
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
+
+
+    suspend fun syncPendingStudentSchedules(context: Context) = withContext(Dispatchers.IO) {
+
+
+        Log.e("AUTO_SYNC", "syncPendingStudentSchedules() CALLED")
+
+        val db = AppDatabase.getDatabase(context)
+        Log.e("AUTO_SYNC", "Fetching pending schedules from Room")
+
+        // fetch pending schedules from new table
+        val pendingList = db.pendingScheduleDao().getPendingSchedules()
+
+        Log.e("AUTO_SYNC", "PendingScheduleEntity count = ${pendingList.size}")
+        if (pendingList.isEmpty()) {
+            Log.i("SCHEDULER_SYNC", "No pending schedules to sync (PendingScheduleEntity empty)")
+            return@withContext
+        }
+
+        val prefs = context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val baseUrl = prefs.getString("baseUrl", "")!!
+        val hash = prefs.getString("hash", "")!!
+
+        val apiService = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
+
+        // Directly build payload from PendingScheduleEntity (NO EXTRA MAPPING)
+        val actionArray = JSONArray()
+
+        pendingList.forEach { p ->
+
+            val obj = JSONObject()
+
+            // copy all fields exactly as stored
+            obj.put("school_id",        p.school_id)
+            obj.put("syear",            p.syear)
+            obj.put("marking_period_id",p.marking_period_id)
+            obj.put("mp",               p.mp)
+
+            obj.put("class_id",         p.class_id)
+            obj.put("class_title",      p.class_title)
+
+            obj.put("subjectId",        p.subjectId)
+            obj.put("headId",           p.headId)
+
+            obj.put("course_id",        p.course_id)
+            obj.put("course_period_id", p.course_period_id)
+            obj.put("cp_title",         p.cp_title)
+
+            obj.put("teacher_id",       p.teacher_id)
+            obj.put("teacher_name",     p.teacher_name)
+
+            obj.put("student_id",       p.student_id)
+            obj.put("student_name",     p.student_name)
+
+            obj.put("start_date",       p.start_date)
+            obj.put("created_by",       p.created_by)
+
+            obj.put("isCreateScheduling", p.isCreateScheduling)
+            obj.put("isUpdateScheduling", p.isUpdateScheduling)
+
+            actionArray.put(obj)
+        }
+
+        val bodyJson = JSONObject().apply {
+            put("smParamDataObj", JSONObject().apply {
+                put("actionType", "addUpdateStudentSubjectSchedulingTblDetails")
+                put("actionData", actionArray)
+            })
+        }
+
+        val requestBody = okhttp3.RequestBody.create(
+            okhttp3.MediaType.parse("application/json"),
+            bodyJson.toString()
+        )
+
+        Log.e("SCHEDULER_SYNC", "Sending ${pendingList.size} pending schedules...\n$bodyJson")
+
+        try {
+            val response = apiService.postStudentSubjectSchedule(body = requestBody)
+
+            if (response.isSuccessful && response.body() != null) {
+
+                val respStr = response.body()!!.string()
+                Log.e("SCHEDULER_SYNC", "Response: $respStr")
+
+                val respJson = JSONObject(respStr)
+                val status = respJson.optJSONObject("collection")
+                    ?.optJSONObject("response")
+                    ?.optString("status")
+                    ?: respJson.optJSONObject("collection")
+                        ?.optJSONObject("response")
+                        ?.optString("statusMsg")
+
+                if (status.equals("SUCCESS", true)) {
+
+                    pendingList.forEach {
+                        db.pendingScheduleDao().updateSyncStatus(it.id, "complete")
+
+                        Log.e("AUTO_SYNC", "✔ Server SUCCESS — Updating pending rows to complete")
+
+                    }
+
+                    Log.e("SCHEDULER_SYNC", "✔ Pending schedules synced successfully")
+                } else {
+                    Log.e("SCHEDULER_SYNC", "❌ Server returned FAILURE - will retry")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SCHEDULER_SYNC", "Exception: ${e.message}")
+        }
+    }
+
+
+
+
+
 
 }
