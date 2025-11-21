@@ -1,11 +1,8 @@
 package com.example.login.view
 
-import android.app.PendingIntent
+
 import android.content.Context
 import android.content.Intent
-import android.nfc.NfcAdapter
-import android.nfc.Tag
-import android.nfc.tech.MifareClassic
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -39,19 +36,17 @@ import android.os.Handler
 import android.os.Looper
 import com.example.login.db.entity.ActiveClassCycle
 import android.Manifest
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.work.OneTimeWorkRequest
-import com.example.login.utility.NetworkReceiver
+
 
 
 class AttendanceActivity : AppCompatActivity() {
 
- //   private  var nfcAdapter: NfcAdapter? = null
-  //  private lateinit var pendingIntent: PendingIntent
-    private val TAG = "NFC_DEBUG"
+
+    private val TAG = "ATTANDANCE_ACTIVITY"
 
 
     private val CAMERA_PERMISSION_REQUEST_CODE = 1001
@@ -334,8 +329,9 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             val estimated = getEstimatedCurrentTime()
             val startTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(estimated)
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(estimated)
-            val instId = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
-                .getString("selectedInstituteIds", "") ?: ""
+            val inst_id=db.teachersDao().getInstituteIdByTeacherId(teacherId)
+           // val instId = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
+            //    .getString("selectedInstituteIds", "") ?: ""
 
             val session = Session(
                 sessionId = sessionId,
@@ -346,7 +342,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 startTime = startTime,
                 endTime = "",
                 isMerged = 0,
-                instId = instId,
+                instId = inst_id!!,
                 syncStatus = "pending",
                 periodId = ""
             )
@@ -456,8 +452,10 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             val startTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(estimated)
 
             val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
-            val savedInstituteId = prefs.getString("selectedInstituteIds", "")
-            val savedInstituteName = prefs.getString("selectedInstituteNames", "")
+           // val savedInstituteId = prefs.getString("selectedInstituteIds", "")
+           // val savedInstituteName = prefs.getString("selectedInstituteNames", "")
+
+            val inst_name=db.instituteDao().getInstituteNameById(student.instId)
 
 
             val attendance = Attendance(
@@ -469,8 +467,8 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 status = "P",
                 markedAt = timeStamp,
                 syncStatus = "pending",
-                instId = savedInstituteId!!,
-                instShortName = savedInstituteName,
+                instId = student.instId,
+                instShortName = inst_name,
                 date = currentDate,
                 startTime = startTime,
                 endTime = "",

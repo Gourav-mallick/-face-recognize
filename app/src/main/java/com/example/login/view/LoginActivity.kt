@@ -18,6 +18,8 @@ import okhttp3.ResponseBody
 import org.json.JSONObject
 import retrofit2.Response
 import com.example.login.R
+import com.example.login.db.dao.AppDatabase
+import com.example.login.db.entity.Institute
 import com.example.login.utility.CheckNetworkAndInternetUtils
 
 class LoginActivity : AppCompatActivity() {
@@ -116,6 +118,7 @@ class LoginActivity : AppCompatActivity() {
                     val retrofit = ApiClient.getClient(baseUrl, HASH) // Pass hash for header
                     val service = retrofit.create(ApiService::class.java)
 
+/*
                     val response: Response<ResponseBody> = service.getUserAuthenticatedDataRaw(rParam, rawData)
 
                     withContext(Dispatchers.Main) {
@@ -236,7 +239,109 @@ class LoginActivity : AppCompatActivity() {
                             Log.e(TAG, "API_ERROR: HTTP ${response.code()} - ${response.message()} - Error: $errorBody")
                             Toast.makeText(this@LoginActivity, "Server is busy. Please try again later.", Toast.LENGTH_LONG).show()
                         }
+
                     }
+
+ */
+
+
+                    // -------------------- NEW LOGIN FLOW --------------------
+
+// 1) CALL NEW AUTH API
+                    val authData = "{\"username\":\"$username\",\"password\":\"$password\"}"
+
+                    val authResponse = service.authenticateStaff(
+                        data = authData
+                    )
+
+                    withContext(Dispatchers.Main) {
+
+                        if (!authResponse.isSuccessful || authResponse.body() == null) {
+                            Toast.makeText(this@LoginActivity, "Authentication failed. Try again.", Toast.LENGTH_LONG).show()
+                            return@withContext
+                        }
+
+                        val authJson = JSONObject(authResponse.body()!!.string())
+                        val authCollection = authJson.optJSONObject("collection")
+                        val authResponseObj = authCollection?.optJSONObject("response")
+
+                        val status = authResponseObj?.optString("statusMsg", "FAIL") ?: "FAIL"
+
+                        if (status != "SUCCESS") {
+                            Toast.makeText(this@LoginActivity, "Invalid username or password", Toast.LENGTH_LONG).show()
+                            return@withContext
+                        }
+
+                        // 2) CALL NEW SCHOOL LIST API
+                        val schoolResponse = service.getSchoolList()
+
+                        if (!schoolResponse.isSuccessful || schoolResponse.body() == null) {
+                            Toast.makeText(this@LoginActivity, "Unable to fetch schools.", Toast.LENGTH_LONG).show()
+                            return@withContext
+                        }
+
+                        val schoolJson = JSONObject(schoolResponse.body()!!.string())
+                        val schoolCollection = schoolJson.optJSONObject("collection")
+                        val schoolResponseObj = schoolCollection?.optJSONObject("response")
+                        val schoolArray = schoolResponseObj?.optJSONArray("schoolList")
+
+                        if (schoolArray == null || schoolArray.length() == 0) {
+                            Toast.makeText(this@LoginActivity, "No institutes found.", Toast.LENGTH_LONG).show()
+                            return@withContext
+                        }
+
+                        val instituteList = ArrayList<Institute>()
+                        val schoolIds = ArrayList<String>()
+                        val schoolShortNames = ArrayList<String>()
+
+                        for (i in 0 until schoolArray.length()) {
+                            val obj = schoolArray.getJSONObject(i)
+
+                            val inst = Institute(
+                                id = obj.optString("ID"),
+                                shortName = obj.optString("SHORT_NAME"),
+                                title = obj.optString("TITLE"),
+                                sYear = obj.optString("SYEAR"),
+                                timezone = obj.optString("timezone"),
+                            )
+
+                            instituteList.add(inst)
+
+                            // also for Intent navigation
+                            schoolIds.add(inst.id)
+                            schoolShortNames.add(inst.shortName)
+                        }
+
+
+                     // ADD THIS BLOCK EXACTLY HERE
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            try {
+                                val db = AppDatabase.getDatabase(this@LoginActivity)
+                                db.instituteDao().insertAll(instituteList)
+                                Log.d(TAG, "INSTITUTE_SAVED: ${instituteList.size}")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "INSTITUTE_SAVE_ERROR: ${e.message}")
+                            }
+                        }
+
+
+
+                        // Save login details (same as before)
+                        prefs.edit()
+                            .putString("baseUrl", baseUrl)
+                            .putString("username", username)
+                            .putString("password", password)
+                            .putString("hash", HASH)
+                            .apply()
+
+                        // NAVIGATE (same as old logic)
+                        val intent = Intent(this@LoginActivity, SelectInstituteActivity::class.java).apply {
+                            putStringArrayListExtra("schoolIds", schoolIds)
+                            putStringArrayListExtra("schoolShortNames", schoolShortNames)
+                        }
+                        startActivity(intent)
+                    }
+
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@LoginActivity, "Unable to reach the server. Please try again later.", Toast.LENGTH_LONG).show()

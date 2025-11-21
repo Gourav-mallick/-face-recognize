@@ -19,6 +19,20 @@ interface ApiService {
         @Query("data") data: String
     ): Response<ResponseBody>
 
+    @GET("sims-services/digitalsims/")
+    suspend fun authenticateStaff(
+        @Query("r") r: String = "api/v1/Staff/AuthStaff",
+        @Query("data") data: String
+    ): Response<ResponseBody>
+
+
+    @GET("sims-services/digitalsims/")
+    suspend fun getSchoolList(
+        @Query("r") r: String = "api/v1/School/SchoolList"
+    ): Response<ResponseBody>
+
+
+
 
     // Fetch student list by passing JSON query
     @GET("sims-services/digitalsims/")

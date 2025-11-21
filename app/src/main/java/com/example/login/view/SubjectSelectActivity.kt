@@ -174,19 +174,31 @@ class SubjectSelectActivity : ComponentActivity() {
                 }
 
                 AlertDialog.Builder(this@SubjectSelectActivity)
-                    .setTitle("Students Not Enrolled (${notScheduleStudents.size})")
+                    .setTitle("Students Not Schedule : (${notScheduleStudents.size})")
                     .setView(view)
                     .setPositiveButton("OK") { _, _ ->
                         lifecycleScope.launch {
+
+                            var removedCount = 0
                             // REMOVE UNCHECKED STUDENTS FROM ATTENDANCE
                             notScheduleStudents.forEach { s ->
                                 if (!tempSelected.contains(s.studentId)) {
+                                    removedCount++
                                     Log.d(
                                         "AttendanceLog",
                                         "DELETED → Student ${s.studentId} (${s.studentName}) removed from session $sessionId"
                                     )
                                     db.attendanceDao().deleteAttendanceForStudent(sessionId, s.studentId)
                                 }
+                            }
+
+                            //  SHOW TOAST IF ANY STUDENTS WERE REMOVED
+                            if (removedCount > 0) {
+                                Toast.makeText(
+                                    this@SubjectSelectActivity,
+                                    "Unchecked $removedCount students, their attendance ignored by the system.",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
 
 
@@ -213,7 +225,6 @@ class SubjectSelectActivity : ComponentActivity() {
                 return@launch
              // STOP UNTIL OK
             }
-
 
              //  NOT ENROLLED = ZERO → flow continues automatically
             continueAndSaveSelectedCourse()
@@ -361,6 +372,10 @@ class SubjectSelectActivity : ComponentActivity() {
 
                 val student =db.studentsDao().getStudentById(studentId)
                 val student_classId=student?.classId
+                val student_inst=student?.instId
+
+                val syear= student_inst?.let {db.instituteDao().getInstituteYearById(it)}
+
 
                 var Student_className = ""
                 if (!student_classId.isNullOrBlank()) {
@@ -370,8 +385,8 @@ class SubjectSelectActivity : ComponentActivity() {
 
                 val obj = JSONObject()
                 // Keep these fields similar to sample payload you provided.
-                obj.put("school_id", "1")
-                obj.put("syear", "2024")
+                obj.put("school_id", student_inst)
+                obj.put("syear", syear?:"")
                 obj.put("marking_period_id", info.mpId ?: "")
                 obj.put("mp", info.mpLongTitle ?: "")
                 obj.put("class_id", student_classId ?: "")
@@ -453,6 +468,11 @@ class SubjectSelectActivity : ComponentActivity() {
                     if (status.equals("SUCCESS", ignoreCase = true)) {
                         serverSuccess = true
 
+                        Toast.makeText(
+                            this@SubjectSelectActivity,
+                            "Students scheduled successfully",
+                            Toast.LENGTH_SHORT
+                        ).show()
 
                         Log.e("SCHEDULER_SUCCESS", "----- SERVER SUCCESS: STUDENT SCHEDULES SENT -----")
                         tempSelected.forEach { studentId ->
@@ -529,6 +549,12 @@ class SubjectSelectActivity : ComponentActivity() {
             }
 
             Log.e("SCHEDULER", "API FAILED → Saved ${actionArray.length()} pending schedules locally")
+
+            Toast.makeText(
+                this@SubjectSelectActivity,
+                "Students scheduled successfully",
+                Toast.LENGTH_SHORT
+            ).show()
             return@withContext // stop here, no StudentSchedule insertion
         }
 

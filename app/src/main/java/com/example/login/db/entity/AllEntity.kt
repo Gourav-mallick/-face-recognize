@@ -87,6 +87,16 @@ data class StudentSchedule(
 )
 
 
+@Entity(tableName = "institutes")
+data class Institute(
+    @PrimaryKey val id: String,
+    val shortName: String,
+    val title: String?,
+    val sYear: String?,
+    val timezone: String?,
+)
+
+
 
 @Entity(tableName = "pending_scheduling")
 data class PendingScheduleEntity(

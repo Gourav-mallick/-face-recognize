@@ -14,6 +14,7 @@ import com.example.login.db.entity.Teacher
 import com.example.login.db.entity.Class
 import com.example.login.db.entity.CourseFullInfo
 import com.example.login.db.entity.CoursePeriod
+import com.example.login.db.entity.Institute
 import com.example.login.db.entity.PendingScheduleEntity
 import com.example.login.db.entity.Session
 import com.example.login.db.entity.StudentSchedule
@@ -79,6 +80,10 @@ interface TeachersDao {
 
     @Query("SELECT * FROM teachers")
     suspend fun getAllTeachers(): List<Teacher>
+
+    @Query("SELECT instId FROM teachers WHERE staffId = :teacherId")
+    suspend fun getInstituteIdByTeacherId(teacherId: String): String?
+
 
     @Query("SELECT staffName FROM teachers WHERE staffId = :teacherId")
     suspend fun getTeacherNameById(teacherId: String): String?
@@ -403,6 +408,28 @@ interface ActiveClassCycleDao {
 
     @Query("DELETE FROM ActiveClassCycle WHERE classroomId = :classroomId")
     suspend fun deleteByClassroomId(classroomId: String)
+}
+
+
+@Dao
+interface InstituteDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(list: List<Institute>)
+
+    @Query("SELECT * FROM institutes")
+    suspend fun getAll(): List<Institute>
+
+    @Query("DELETE FROM institutes")
+    suspend fun clear()
+
+    @Query("SELECT shortName FROM institutes WHERE Id = :instituteId")
+    suspend fun getInstituteNameById(instituteId: String): String?
+
+    @Query("SELECT syear FROM institutes WHERE Id = :instituteId")
+    suspend fun getInstituteYearById(instituteId: String): String?
+
+
 }
 
 
