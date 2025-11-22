@@ -51,7 +51,7 @@ class LoginActivity : AppCompatActivity() {
         disableCopyPaste(edtPass)
 
 
-        // 🔹 Autofill saved login details if available
+        //  Autofill saved login details if available
         val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
 
 
@@ -90,7 +90,7 @@ class LoginActivity : AppCompatActivity() {
             } else {
                 "$baseUrl///"
             }
-
+/*
             // Prepare query parameters (unencoded data)
             val rawData = "{\"username\":\"$username\",\"password\":\"$password\",\"authMethod\":\"online\"}"
             val rParam = "api/v1/Student/GetUserAuthenticatedData"
@@ -100,6 +100,9 @@ class LoginActivity : AppCompatActivity() {
             Log.d(TAG, "REQUEST_URL: $fullUrl")
             Log.d(TAG, "REQUEST_PARAMS: r=$rParam, data=$rawData")
             Log.d(TAG, "REQUEST_HEADER: hash=$HASH")
+
+
+ */
 
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
@@ -245,9 +248,9 @@ class LoginActivity : AppCompatActivity() {
  */
 
 
-                    // -------------------- NEW LOGIN FLOW --------------------
 
-// 1) CALL NEW AUTH API
+
+                   // 1) CALL AUTH API
                     val authData = "{\"username\":\"$username\",\"password\":\"$password\"}"
 
                     val authResponse = service.authenticateStaff(
@@ -272,7 +275,7 @@ class LoginActivity : AppCompatActivity() {
                             return@withContext
                         }
 
-                        // 2) CALL NEW SCHOOL LIST API
+                        // 2) CALL SCHOOL LIST API
                         val schoolResponse = service.getSchoolList()
 
                         if (!schoolResponse.isSuccessful || schoolResponse.body() == null) {

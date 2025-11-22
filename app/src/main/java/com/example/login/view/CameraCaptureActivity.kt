@@ -15,7 +15,6 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 import com.example.login.R
@@ -84,45 +83,91 @@ class CameraCaptureActivity : AppCompatActivity() {
         tvUserInfo.text = "$name ($id)"
 
 
-        btnTryAgain.setOnClickListener {
-            // hide overlay and resume analysis
+        btnSubmit.setOnClickListener {
+
+            // Save captured image for this step
+            lastCaptured?.let { capturedBitmaps.add(it) }
+
             overlayPanel.visibility = View.GONE
             dimView.visibility = View.GONE
 
-            captureStep = 0
-            capturedBitmaps.clear()
-            updateStepText()
+            // Move to next step
+            captureStep++
 
+            if (captureStep < 3) {
+                updateStepText()
+                captured = false
+                faceStableStart = 0L
+            } else {
+                tvStep.text = "All photos captured"
+
+                // Now return images to caller
+                val img1 = bitmapToBytes(capturedBitmaps[0])
+                val img2 = bitmapToBytes(capturedBitmaps[1])
+                val img3 = bitmapToBytes(capturedBitmaps[2])
+
+                val reply = intent
+                reply.putExtra("face_img_1", img1)
+                reply.putExtra("face_img_2", img2)
+                reply.putExtra("face_img_3", img3)
+                setResult(RESULT_OK, reply)
+                finish()
+            }
+        }
+
+
+        btnTryAgain.setOnClickListener {
+            overlayPanel.visibility = View.GONE
+            dimView.visibility = View.GONE
+
+            // Do NOT change step — recapture same position
             captured = false
             faceStableStart = 0L
-
-            // nothing else needed; analyzer is still running
         }
 
-        btnSubmit.setOnClickListener {
 
-            // 🔹 Must have 3 captured images
-            if (capturedBitmaps.size < 3) {
-                Toast.makeText(this, "Please complete all 3 captures", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+        /*
+                btnTryAgain.setOnClickListener {
+                    // hide overlay and resume analysis
+                    overlayPanel.visibility = View.GONE
+                    dimView.visibility = View.GONE
 
-            // 🔹 Convert all 3 bitmaps to ByteArrays
-            val img1 = bitmapToBytes(capturedBitmaps[0])
-            val img2 = bitmapToBytes(capturedBitmaps[1])
-            val img3 = bitmapToBytes(capturedBitmaps[2])
+                    captureStep = 0
+                    capturedBitmaps.clear()
+                    updateStepText()
 
-            // 🔹 Prepare reply intent
-            val reply = intent
-            reply.putExtra("face_img_1", img1)
-            reply.putExtra("face_img_2", img2)
-            reply.putExtra("face_img_3", img3)
+                    captured = false
+                    faceStableStart = 0L
 
-            // 🔹 Return to caller
-            setResult(RESULT_OK, reply)
-            finish()
-        }
+                    // nothing else needed; analyzer is still running
+                }
 
+                btnSubmit.setOnClickListener {
+
+                    // 🔹 Must have 3 captured images
+                    if (capturedBitmaps.size < 3) {
+                        Toast.makeText(this, "Please complete all 3 captures", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+
+                    // 🔹 Convert all 3 bitmaps to ByteArrays
+                    val img1 = bitmapToBytes(capturedBitmaps[0])
+                    val img2 = bitmapToBytes(capturedBitmaps[1])
+                    val img3 = bitmapToBytes(capturedBitmaps[2])
+
+                    // 🔹 Prepare reply intent
+                    val reply = intent
+                    reply.putExtra("face_img_1", img1)
+                    reply.putExtra("face_img_2", img2)
+                    reply.putExtra("face_img_3", img3)
+
+                    // 🔹 Return to caller
+                    setResult(RESULT_OK, reply)
+                    finish()
+                }
+
+
+         */
 
         startCamera()
     }
@@ -181,7 +226,7 @@ class CameraCaptureActivity : AppCompatActivity() {
             return
         }
 
-        // 🔹 Convert camera frame to upright bitmap (EXISTING NEIGHBOR CODE)
+        //  Convert camera frame to upright bitmap (EXISTING NEIGHBOR CODE)
         val rotated = imageProxyToBitmapUpright(imageProxy)
         val prepared = if (MIRROR_FRONT) mirrorBitmap(rotated) else rotated
 
@@ -236,7 +281,7 @@ class CameraCaptureActivity : AppCompatActivity() {
 
 
                     //  STEP 0 → LEFT FACE CAPTURE
-
+/*
                     0 -> {
                         capturedBitmaps.add(cropped)
                         captureStep = 1
@@ -274,12 +319,38 @@ class CameraCaptureActivity : AppCompatActivity() {
 
                         tvStep.text = "All photos captured"
                     }
+
+ */
+
+                    0 -> {
+                        lastCaptured = cropped
+                        showPreview(cropped)
+                    }
+                    1 -> {
+                        lastCaptured = cropped
+                        showPreview(cropped)
+                    }
+                    2 -> {
+                        lastCaptured = cropped
+                        showPreview(cropped)
+                    }
+
+
+
+
                 }
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Face detect error: ${it.message}", Toast.LENGTH_SHORT).show()
             }
             .addOnCompleteListener { imageProxy.close() }
+    }
+
+    private fun showPreview(bmp: Bitmap) {
+        dimView.visibility = View.VISIBLE
+        overlayPanel.visibility = View.VISIBLE
+        capturedImage.setImageBitmap(bmp)
+        tvStep.text = "Preview"
     }
 
 

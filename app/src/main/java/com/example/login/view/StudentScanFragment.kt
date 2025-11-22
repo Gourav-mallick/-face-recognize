@@ -302,7 +302,7 @@ class StudentScanFragment : Fragment() {
 
                         Toast.makeText(
                             requireContext(),
-                            "You are not enrolled for this class.\nPlease contact administration and enroll.",
+                            "You are not enrolled for this class.\nPlease contact the administration to complete your enrollment.",
                             Toast.LENGTH_LONG
                         ).show()
 

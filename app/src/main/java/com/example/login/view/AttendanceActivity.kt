@@ -160,7 +160,7 @@ class AttendanceActivity : AppCompatActivity() {
             val existingForClass = activeSessions.keys.any { it.first == classroomId }
 
             if (!existingForClass) {
-                // ✅ Start a new classroom cycle (no active session yet)
+                //  Start a new classroom cycle (no active session yet)
                 val cycle = AttendanceCycle(classroomId, classroomName)
                 // Note: No teacher yet, teacher will scan next.
                 currentVisibleClassroomId = classroomId
@@ -525,7 +525,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
                         Log.d("SESSION_END", "Session ${cycle.sessionId} closed at $currentTime")
 
-                        // ✅ Clear saved app state before starting new flow
+                        //  Clear saved app state before starting new flow
                         val prefs1 = getSharedPreferences("APP_STATE", MODE_PRIVATE)
                         prefs1.edit().clear().apply()
                         val prefs2 = getSharedPreferences("AttendancePrefs", MODE_PRIVATE)

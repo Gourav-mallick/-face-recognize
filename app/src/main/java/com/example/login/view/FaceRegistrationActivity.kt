@@ -281,7 +281,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
 
             if (action == "delete") {
                 val id = selectedStudent?.studentId ?: selectedTeacher?.staffId
-                if (id != null) saveFace(id, null)
+                if (id != null) showDeleteFaceRegisterAuthDialog(id)
                 return
             }
 
@@ -505,7 +505,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
             val mediaType = MediaType.parse("application/json; charset=utf-8")
             val requestBody = RequestBody.create(mediaType, json)
             val baseUrl = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
-                .getString("baseUrl", "https://testvps.digitaledu.in/")!!
+                .getString("baseUrl", "")!!
             val hash = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
                 .getString("hash", null)
             val api = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
@@ -545,6 +545,34 @@ class FaceRegistrationActivity : AppCompatActivity() {
             }
             Log.e("EnrollActivity", "sendFaceToServer error", e)
         }
+    }
+
+
+    private fun showDeleteFaceRegisterAuthDialog(userId: String) {
+        val input = EditText(this)
+        input.hint = "Enter admin PIN"
+        input.setPadding(40, 40, 40, 40)
+
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Authentication Required")
+            .setMessage("Enter admin PIN to delete face data")
+            .setView(input)
+            .setCancelable(true)
+            .setPositiveButton("Confirm") { _, _ ->
+                val pin = input.text.toString().trim()
+
+                // 🔐 Change this PIN as you want
+                if (pin == "1234") {
+                    // Auth Passed → delete face
+                    saveFace(userId, null)
+                } else {
+                    Toast.makeText(this, "Invalid PIN!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.show()
     }
 
 

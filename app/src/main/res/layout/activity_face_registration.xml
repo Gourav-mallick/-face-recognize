@@ -81,7 +81,8 @@
                         android:layout_height="wrap_content"
                         android:text="Teacher"
                         android:textColor="#E0E0E0"
-                        android:buttonTint="#FFFFFF" />
+                        android:buttonTint="#80FFFFFF"
+                        android:enabled="false" />
 
                     <RadioButton
                         android:id="@+id/rbStaff"
