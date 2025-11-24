@@ -39,6 +39,7 @@ data class CoursePeriod(
     val mpId: String?, // term/period reference
     val mpLongTitle: String?,
 
+
     ): Parcelable
 
 
@@ -200,6 +201,7 @@ data class CourseFullInfo(
     val classShortName: String?,
     val mpId: String?,
     val mpLongTitle: String?
+
 )
 
 

@@ -100,6 +100,13 @@ class ClassroomScanFragment : Fragment() {
         }
 
 
+        val btnFaceVerify = view.findViewById<Button>(R.id.btnFaceVerify)
+        btnFaceVerify.setOnClickListener {
+           val intent = Intent(requireContext(), FaceRecogniseActivity::class.java)
+            startActivity(intent)
+        }
+
+
 
 // Listen for broadcast updates
         val receiver = object : BroadcastReceiver() {
@@ -182,7 +189,6 @@ class ClassroomScanFragment : Fragment() {
                 .setPositiveButton("Yes") { _, _ ->
                     val intent = Intent(requireContext(), SyncAttendanceToServer::class.java)
                     startActivity(intent)
-
 
                 }
                 .setNegativeButton("No", null)

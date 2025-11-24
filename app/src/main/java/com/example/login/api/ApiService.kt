@@ -13,6 +13,7 @@ import retrofit2.http.Query
 
 
 interface ApiService {
+
     @GET("sims-services/digitalsims/")
     suspend fun getUserAuthenticatedDataRaw(
         @Query("r") r: String,  //endpoint
@@ -82,7 +83,6 @@ interface ApiService {
         @Query("r") r: String = "api/v1/User/updateUserRegistration",
         @Body body: RequestBody
     ): Response<ResponseBody>
-
 
 
     @POST("sims-services/digitalsims/")

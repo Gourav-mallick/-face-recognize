@@ -115,8 +115,8 @@ class ClassSelectActivity : ComponentActivity() {
                         AlertDialog.Builder(this@ClassSelectActivity)
                             .setTitle("Remove Attandance")
                             .setMessage(
-                                "These students belong to this class:\nNo. of Students -\n${students.size} \n\n" +
-                                        "Their attendance will be deleted. Continue?"
+                                "This will Ignore all attendance records for Class ID: ${classId}\nNumber of Students -\n${students.size} \n\n" +
+                                        "Are you sure?"
                             )
                             .setPositiveButton("Yes") { _, _ ->
                                 lifecycleScope.launch {

@@ -121,13 +121,14 @@ class AttendanceOverviewActivity : ComponentActivity() {
     private fun submitAttendanceForSession() {
         lifecycleScope.launch {
 
+            Log.d("ATTENDANCE_DEBUG", "submitAttendanceForSession() START for sessionId=$sessionId")
             // Show spinner
             binding.progressBar.visibility = View.VISIBLE
             delay(2000) // show for 2s
 
             try {
                 val attendanceList = db.attendanceDao().getAttendanceBySessionId(sessionId)
-              //  Log.d("AttendanceOverview", "Attendance list: $attendanceList")
+               Log.d("AttendanceOverview", "Attendance list: $attendanceList")
 
                 if (attendanceList.isEmpty()) {
                     binding.progressBar.visibility = View.GONE
@@ -161,6 +162,9 @@ class AttendanceOverviewActivity : ComponentActivity() {
                 }
 
                 Log.d("SYNC_REQUEST", requestBodyJson.toString())
+                Log.d("ATTENDANCE_DEBUG", "Final requestBodyJson=${requestBodyJson.toString()}")
+                Log.d("SYNC_REQUEST", requestBodyJson.toString())
+
 
                 val mediaType = MediaType.parse("application/json; charset=utf-8")
                 val requestBody = RequestBody.create(mediaType, requestBodyJson.toString())
@@ -181,13 +185,17 @@ class AttendanceOverviewActivity : ComponentActivity() {
                         val collection = json.optJSONObject("collection")
                         val responseObj = collection?.optJSONObject("response")
                         val apiStatus = responseObj?.optString("status", "FAILED") ?: "FAILED"
+                        Log.d("ATTENDANCE_DEBUG", "API reported status=$apiStatus")
                         val apiMsgArray = responseObj?.optJSONArray("msgAr")
+                        Log.d("ATTENDANCE_DEBUG", "API msgArr raw=$apiMsgArray")
                         val msg = apiMsgArray?.optString(0) ?: "Attendance synced successfully"
 
                         if (apiStatus.equals("SUCCESS", ignoreCase = true)) {
                             // Delete Attendance records from DB & Session if it successfully sent to server
+                            Log.d("SYNC_RESPONSE", "Attendance synced successfully")
                             db.attendanceDao().updateSyncStatusBySession(sessionId, "complete")
                             db.sessionDao().updateSessionSyncStatusToComplete(sessionId, "complete")
+
 
                             DatabaseCleanupUtils.deleteSyncedAttendances(this@AttendanceOverviewActivity)
                             DatabaseCleanupUtils.deleteSyncedSessions(this@AttendanceOverviewActivity)
@@ -199,6 +207,7 @@ class AttendanceOverviewActivity : ComponentActivity() {
 
                         } else {
                             withContext(Dispatchers.Main) {
+                                Log.w("ATTENDANCE_DEBUG", "API returned non-success or empty body. Will mark locally.")
                                 showPopupWithOk("Attendance saved locally. You can sync later.")
                             }
                         }
@@ -216,6 +225,7 @@ class AttendanceOverviewActivity : ComponentActivity() {
 
 
             } catch (e: Exception) {
+                Log.e("ATTENDANCE_DEBUG", "Exception in submitAttendanceForSession: ${e.message}", e)
                 binding.progressBar.visibility = View.GONE
                 withContext(Dispatchers.Main) {
                     showPopupWithOk("Server not reachable. Attendance saved locally, will sync later.")
@@ -227,17 +237,22 @@ class AttendanceOverviewActivity : ComponentActivity() {
 
     private fun mapAttendanceToApiFormat(att: Attendance): JSONObject {
         val date = att.date
-        val year = date.split("-")[0]
+        //val year = date.split("-")[0]
+
         val startTime = att.startTime
         val endTime = att.endTime
         val dataStartTime = "$date $startTime:00"
         val dataEndTime = "$date $endTime:00"
 
+        Log.d("ATTENDANCE_DEBUG", "instId=${att.instId}")
+        Log.d("ATTENDANCE_DEBUG", "acadamicyear=${att.academicYear}")
+
+
         return JSONObject().apply {
             put("studentId", att.studentId)
             put("instId", att.instId)
             put("instShortName", att.instShortName ?: "")
-            put("academicYear",  year)
+            put("academicYear",  att.academicYear)
             put("classId", att.classId)
             put("classShortName", att.classShortName ?: "")
             put("subjectId", att.subjectId ?: "")

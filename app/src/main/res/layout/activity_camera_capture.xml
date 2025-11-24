@@ -178,7 +178,7 @@
                     android:id="@+id/btnSubmit"
                     android:layout_width="140dp"
                     android:layout_height="44dp"
-                    android:text="Submit" />
+                    android:text="Next" />
             </LinearLayout>
 
             <TextView

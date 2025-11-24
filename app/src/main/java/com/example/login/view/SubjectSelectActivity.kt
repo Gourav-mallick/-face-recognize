@@ -82,34 +82,57 @@ class SubjectSelectActivity : ComponentActivity() {
         lifecycleScope.launch {
             val teacherId = db.sessionDao().getSessionById(sessionId)?.teacherId ?: ""
 
-            // 1) Find cpIds assigned to this teacher
+            // 1️⃣ Get course periods for this teacher AND the selected classes
             val assignedCoursePeriods = db.coursePeriodDao().getAllCoursePeriods()
-                .filter { it.teacherId == teacherId }
-
-            val teacherCourseIds = assignedCoursePeriods.map { it.courseId }.toSet()
-
-            val courses = if (teacherCourseIds.isNotEmpty()) {
-                // only load courses which belong to teacher
-                db.courseDao().getAllCourses().filter { course ->
-                    teacherCourseIds.contains(course.courseId)
+                .filter { cp ->
+                    cp.teacherId == teacherId && selectedClasses.contains(cp.classId)
                 }
-            } else {
-                db.courseDao().getAllCourses()
+
+            // 2️⃣ Extract only the courseIds teacher teaches in selected classes
+            val teacherSelectedClassCourseIds = assignedCoursePeriods.map { it.courseId }.toSet()
+
+            // 1️⃣ First try to load teacher's assigned courses
+            var courses = db.courseDao().getAllCourses().filter { course ->
+                teacherSelectedClassCourseIds.contains(course.courseId)
+            }
+
+       // 2️⃣ If teacher has NO assigned courses for this class → load ALL class courses
+            // 3️⃣ If no course assigned → Load ALL courses for this class
+            if (courses.isEmpty()) {
+
+                Log.w("COURSE_SELECT", "Teacher has no assigned courses → showing all courses for this class")
+
+                // All CPs that belong to this class
+                val allCpForClass = db.coursePeriodDao().getAllCoursePeriods()
+                    .filter { cp ->
+                        selectedClasses.contains(cp.classId)
+                    }
+
+                val allClassCourseIds = allCpForClass.map { it.courseId }.toSet()
+
+                courses = db.courseDao().getAllCourses().filter { course ->
+                    allClassCourseIds.contains(course.courseId)
+                }
+
+                // Show message to user
+                showToast("No courses assigned to you — showing all class courses")
             }
 
 
-            Log.d("CourseSelectActivity", "Courses: $courses")
-
+            Log.d("CourseSelectActivity", "Filtered Courses: $courses")
 
             val adapter = SubjectSelectAdapter(courses) { selectedIds ->
                 selectedCourseIds.clear()
                 selectedCourseIds.addAll(selectedIds)
             }
 
-            binding.recyclerViewCourses.layoutManager = LinearLayoutManager(this@SubjectSelectActivity)
+            binding.recyclerViewCourses.layoutManager =
+                LinearLayoutManager(this@SubjectSelectActivity)
+
             binding.recyclerViewCourses.adapter = adapter
         }
     }
+
 
 
     // 🔹 Handle "Continue" button click
@@ -120,8 +143,22 @@ class SubjectSelectActivity : ComponentActivity() {
             val isMultiClass = selectedClasses.size > 1
 
 
+
+            val teacherId = db.sessionDao().getSessionById(sessionId)?.teacherId ?: ""
+
+           // All CPs for this teacher for selected courses
+            val validTeacherCps = db.coursePeriodDao().getAllCoursePeriods()
+                .filter { cp ->
+                    cp.teacherId == teacherId && selectedCourseIds.contains(cp.courseId)
+                }
+                .map { it.cpId }
+                .toSet()
+
             // 1) Get selected CPIDs from selected courses
             val selectedCourseInfo = db.courseDao().getCourseDetailsForIds(selectedCourseIds)
+                .filter { info ->
+                    info.cpId != null && validTeacherCps.contains(info.cpId)
+                }
             val selectedCpIds = selectedCourseInfo
                 .mapNotNull { it.cpId }
                 .toSet()
@@ -194,11 +231,7 @@ class SubjectSelectActivity : ComponentActivity() {
 
                             //  SHOW TOAST IF ANY STUDENTS WERE REMOVED
                             if (removedCount > 0) {
-                                Toast.makeText(
-                                    this@SubjectSelectActivity,
-                                    "Unchecked $removedCount students, their attendance ignored by the system.",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                showToast("Unchecked $removedCount students, their attendance ignored by the system.")
                             }
 
 
@@ -247,18 +280,16 @@ class SubjectSelectActivity : ComponentActivity() {
 
                 when {
                     isNoCourse -> {
-                        Toast.makeText(
-                            this@SubjectSelectActivity,
-                            "Please select or add a course",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showToast("Please select or add a course")
+
                     }
 
                     isMultiCourse -> {
                         val courseDetails = db.courseDao().getCourseDetailsForIds(selectedCourseIds)
 
                         if (courseDetails.isEmpty()) {
-                            Toast.makeText(this@SubjectSelectActivity, "No course details found", Toast.LENGTH_SHORT).show()
+                            showToast("No course details found")
+
                             return@launch
                         }
 
@@ -305,7 +336,8 @@ class SubjectSelectActivity : ComponentActivity() {
                         val courseDetails = db.courseDao().getCourseDetailsForIds(listOf(courseId)).firstOrNull()
 
                         if (courseDetails == null) {
-                            Toast.makeText(this@SubjectSelectActivity, "Course details not found", Toast.LENGTH_SHORT).show()
+                            showToast("Course details not found")
+
                             return@launch
                         }
 
@@ -362,8 +394,26 @@ class SubjectSelectActivity : ComponentActivity() {
         val todayDate = session?.date ?: java.text.SimpleDateFormat("yyyy-MM-dd").format(java.util.Date())
 
         // if a field is missing from CourseFullInfo (classId etc.) we fallback to safe values
+
+        // KEEP ONLY CPIDs where:
+// 1) teacher matches
+// 2) courseId matches selected course
+// 3) classId matches selectedClasses
+        val validTeacherCpIds = db.coursePeriodDao().getAllCoursePeriods()
+            .filter { cp ->
+                cp.teacherId == teacherId &&
+                        selectedCourseInfo.any { it.courseId == cp.courseId } &&
+                        selectedClasses.contains(cp.classId)
+            }
+            .map { it.cpId }
+            .toSet()
+
+        val teacherSelectedInfo = selectedCourseInfo.filter { info ->
+            info.cpId != null && validTeacherCpIds.contains(info.cpId)
+        }
+
         tempSelected.forEach { studentId ->
-            selectedCourseInfo.forEach { info ->
+            teacherSelectedInfo.forEach { info ->
                 // skip invalid cp/course rows
                 if (info.cpId.isNullOrBlank() || info.courseId.isNullOrBlank()) {
                     Log.d("SCHEDULER", "Skipping invalid info for student=$studentId cpId=${info.cpId} courseId=${info.courseId}")
@@ -468,11 +518,18 @@ class SubjectSelectActivity : ComponentActivity() {
                     if (status.equals("SUCCESS", ignoreCase = true)) {
                         serverSuccess = true
 
-                        Toast.makeText(
-                            this@SubjectSelectActivity,
-                            "Students scheduled successfully",
-                            Toast.LENGTH_SHORT
-                        ).show()
+
+                        val msgArr = respJson
+                            .optJSONObject("collection")
+                            ?.optJSONObject("response")
+                            ?.optJSONArray("msgArr")
+
+                        val successMsg = if (msgArr != null && msgArr.length() > 0) {
+                            msgArr.getString(0)   // <-- your required message
+                        } else {
+                            "Students scheduled successfully"
+                        }
+                        showToast(successMsg)
 
                         Log.e("SCHEDULER_SUCCESS", "----- SERVER SUCCESS: STUDENT SCHEDULES SENT -----")
                         tempSelected.forEach { studentId ->
@@ -547,19 +604,13 @@ class SubjectSelectActivity : ComponentActivity() {
 
                 db.pendingScheduleDao().insertSchedule(pending)
             }
-
             Log.e("SCHEDULER", "API FAILED → Saved ${actionArray.length()} pending schedules locally")
 
-            Toast.makeText(
-                this@SubjectSelectActivity,
-                "Students scheduled successfully",
-                Toast.LENGTH_SHORT
-            ).show()
+            showToast("Students scheduled successfully")
+
+
             return@withContext // stop here, no StudentSchedule insertion
         }
-
-
-
 
 
 
@@ -609,6 +660,17 @@ class SubjectSelectActivity : ComponentActivity() {
             }
         }
     }
+
+
+    private suspend fun showToast(msg: String) = withContext(Dispatchers.Main) {
+        Toast.makeText(this@SubjectSelectActivity, msg, Toast.LENGTH_SHORT).show()
+    }
+
+
+
+
+
+
 
 
 

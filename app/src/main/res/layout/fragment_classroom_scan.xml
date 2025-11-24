@@ -154,6 +154,7 @@
             android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent">
 
+            <!-- SYNC BUTTON -->
             <Button
                 android:id="@+id/tvManualDataSync"
                 android:layout_width="42dp"
@@ -165,9 +166,10 @@
 
             <View
                 android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_height="1dp"
+                android:layout_weight="1"/>
 
+            <!-- REGISTER -->
             <Button
                 android:id="@+id/tvEnrollUser"
                 android:layout_width="wrap_content"
@@ -180,9 +182,25 @@
 
             <View
                 android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_height="1dp"
+                android:layout_weight="1"/>
 
+            <!-- CAMERA BUTTON -->
+            <Button
+                android:id="@+id/btnFaceVerify"
+                android:text="📷"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="@drawable/btn_transparent"
+                android:textColor="@color/white"
+                android:textSize="18sp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"/>
+
+            <!-- VERSION -->
             <TextView
                 android:id="@+id/tvVersion"
                 android:layout_width="wrap_content"
@@ -193,7 +211,9 @@
                 android:text="v1.51"
                 android:textColor="@color/white"
                 android:textSize="16sp" />
+
         </LinearLayout>
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

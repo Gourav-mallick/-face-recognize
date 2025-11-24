@@ -296,7 +296,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             }
         }
 
-        //  CASE 2: No active session yet — start new one
+        // CASE 2: No active session yet — start new one
 
         val isSwitchingTeacher = !currentTeacherId.isNullOrEmpty() && currentTeacherId != teacherId
 
@@ -455,7 +455,18 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
            // val savedInstituteId = prefs.getString("selectedInstituteIds", "")
            // val savedInstituteName = prefs.getString("selectedInstituteNames", "")
 
-            val inst_name=db.instituteDao().getInstituteNameById(student.instId)
+            val instIds = (prefs.getString("selectedInstituteIds", "") ?: "")
+                .split(",")
+                .filter { it.isNotBlank() }
+
+            val inst_id = instIds.firstOrNull() ?: ""
+
+
+            Log.d("SYNC_DEBUG_attandance", "Institute Id get: $inst_id")
+            val instName = inst_id?.let { db.instituteDao().getInstituteNameById(it) } ?: ""
+            val academicYear = inst_id?.let { db.instituteDao().getInstituteYearById(it) } ?: ""
+            Log.d("SYNC_DEBUG_attandance", "Academic Year: $academicYear")
+          Log.d("SYNC_DEBUG_attandance", "Institute Name: $instName")
 
 
             val attendance = Attendance(
@@ -467,19 +478,19 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 status = "P",
                 markedAt = timeStamp,
                 syncStatus = "pending",
-                instId = student.instId,
-                instShortName = inst_name,
+                instId = inst_id!!,
+                instShortName = instName,
                 date = currentDate,
                 startTime = startTime,
                 endTime = "",
-                academicYear = "",
+                academicYear = academicYear,
                 period = "",
                 teacherId =cycle.teacherId!!,
                 teacherName = cycle.teacherName!!,
             )
 
 
-            Log.d("SYNC_DEBUG_attandance", "Attendance: $attendance")
+            Log.d("SYNC_DEBUG_attandance", "Attendance list details: $attendance")
             db.attendanceDao().insertAttendance(attendance)
 
             showUserMessage("Attendance marked for ${student.studentName}")

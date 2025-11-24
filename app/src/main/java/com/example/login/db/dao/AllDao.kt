@@ -41,6 +41,10 @@ interface StudentsDao {
     @Query("SELECT * FROM students WHERE classId IN (:classIds)")
     suspend fun getStudentsByClasses(classIds: List<String>): List<Student>
 
+    @Query("SELECT instId FROM students WHERE studentId = :studentId LIMIT 1")
+    suspend fun getInstituteIdByStudentId(studentId: String): String?
+
+
 
     @Query("""
     SELECT * FROM students 
