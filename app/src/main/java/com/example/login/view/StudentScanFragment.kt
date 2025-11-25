@@ -603,7 +603,13 @@ class StudentScanFragment : Fragment() {
 
             Log.d("EMB_CACHE", "Loaded ${cachedTeacherEmbeddings.size} teachers + ${cachedStudentEmbeddings.size} students into cache")
         }
+
+
+
     }
+
+
+
 
 
 }

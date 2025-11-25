@@ -9,10 +9,12 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import com.example.login.R
 import com.example.login.db.dao.AppDatabase
@@ -29,6 +31,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
+
 
 class TeacherScanFragment : Fragment() {
 
@@ -220,6 +223,36 @@ class TeacherScanFragment : Fragment() {
                 if (bestId != null && minDist < DIST_THRESHOLD) {
                     isVerifying = true
 
+                    // 🔥 1) Check assigned classes
+                    val hasClasses = withContext(Dispatchers.IO) { hasAssignedClasses(bestId!!) }
+
+
+                    if (!hasClasses) {
+                        //  Teacher NOT assigned to any class
+                        val message = "$bestName,\n you are not enrolled in any class.\nPlease contact authority."
+
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Access Denied")
+                            .setMessage(message)
+                            .setCancelable(false)
+                            .setPositiveButton("OK") { _, _ ->
+
+
+                                // 🔥 Navigate back to Classroom Scan starting screen
+                               // parentFragmentManager.popBackStack()   // go back 1 step
+
+                                // If you want to CLEAR ALL and go to root of scanning:
+                                parentFragmentManager.popBackStack("TEACHER_SCAN",  FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                                isVerifying = false
+                            }
+                            .show()
+
+                        return@withContext
+                    }
+
+                    // 🔥 CALL NEW FUNCTION HERE
+                  //  logTeacherAssignedClasses(bestId!!)
+
                     sessionCreated = true
                     //  Valid teacher recognized
                     Toast.makeText(requireContext(), "Welcome, $bestName", Toast.LENGTH_LONG).show()
@@ -261,6 +294,18 @@ class TeacherScanFragment : Fragment() {
             }
         }
     }
+
+
+    private suspend fun hasAssignedClasses(teacherId: String): Boolean {
+        return try {
+            val db = AppDatabase.getDatabase(requireContext())
+            val classIds = db.teacherClassMapDao().getClassesForTeacher(teacherId)
+            classIds.isNotEmpty()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 
     // === helpers (same as activity) ===
     private fun imageProxyToBitmapUpright(imageProxy: ImageProxy): Bitmap {
@@ -382,6 +427,35 @@ class TeacherScanFragment : Fragment() {
     }
 
 
+    private fun logTeacherAssignedClasses(teacherId: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val db = AppDatabase.getDatabase(requireContext())
+
+                // 1️⃣ Get classes mapped to this teacher
+                val classIds = db.teacherClassMapDao().getClassesForTeacher(teacherId)
+
+                if (classIds.isEmpty()) {
+                    Log.d("TEACHER_CLASSES", "Teacher $teacherId has NO assigned classes.")
+                    return@launch
+                }
+
+                // 2️⃣ Get class names
+                val classNames = classIds.mapNotNull { id ->
+                    db.classDao().getClassById(id)?.classShortName
+                }
+
+                // 3️⃣ Print in LOG
+                Log.d(
+                    "TEACHER_CLASSES",
+                    "Teacher $teacherId Assigned Classes → IDs=$classIds NAMES=$classNames"
+                )
+
+            } catch (e: Exception) {
+                Log.e("TEACHER_CLASSES", "Error fetching assigned classes: ${e.message}")
+            }
+        }
+    }
 
 
 }

@@ -175,51 +175,11 @@ class AttendanceActivity : AppCompatActivity() {
                 val frag = TeacherScanFragment.newInstance(classroomId)
                 val transaction = supportFragmentManager.beginTransaction()
                 transaction.replace(R.id.fragment_container, frag, TAG_TEACHER)
-                transaction.addToBackStack(null)
+                transaction.addToBackStack("TEACHER_SCAN")
                 updateAppState("TEACHER_SCAN")
 
                 transaction.commitAllowingStateLoss()
             } else {
-
-                // classroom card not for close we comment this part
-
-       /*
-                // 🔹 A class already exists in this classroom
-
-                val activeForThisClass = activeSessions.filterKeys { it.first == classroomId }
-
-                // If currently visible classroom is the same → ask to close the visible teacher’s class
-                if (currentVisibleClassroomId == classroomId && currentTeacherId != null) {
-                    showEndClassDialog(classroomId)
-                    return@launch
-                }
-
-                // Otherwise, resume the first teacher’s active session
-                val firstCycle = activeForThisClass.values.firstOrNull()
-                if (firstCycle != null) {
-                    currentVisibleClassroomId = classroomId
-                    currentTeacherId = firstCycle.teacherId
-
-                    Toast.makeText(
-                        this@AttendanceActivity,
-                        "Resuming ${firstCycle.classroomName} (Teacher: ${firstCycle.teacherName})",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    val frag = StudentScanFragment.newInstance(firstCycle.teacherName ?: "")
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container, frag, TAG_STUDENT)
-                        .commitAllowingStateLoss()
-                } else {
-                    // If somehow no session found, show teacher scan again
-                    val frag = TeacherScanFragment.newInstance(classroomId)
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container, frag, TAG_TEACHER)
-                        .commitAllowingStateLoss()
-                }
-
-       */
-                // Just show info that classroom is already active
 
                 Toast.makeText(
                     this@AttendanceActivity,
@@ -455,11 +415,8 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
            // val savedInstituteId = prefs.getString("selectedInstituteIds", "")
            // val savedInstituteName = prefs.getString("selectedInstituteNames", "")
 
-            val instIds = (prefs.getString("selectedInstituteIds", "") ?: "")
-                .split(",")
-                .filter { it.isNotBlank() }
-
-            val inst_id = instIds.firstOrNull() ?: ""
+            val sessionObj = db.sessionDao().getSessionById(cycle.sessionId!!)
+            val inst_id = sessionObj?.instId ?: ""
 
 
             Log.d("SYNC_DEBUG_attandance", "Institute Id get: $inst_id")
@@ -573,21 +530,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             transaction.commit()
         }
     }
-/*
-    private fun hexStringToByteArray(s: String): ByteArray {
-        val len = s.length
-        require(len % 2 == 0) { "Hex string must have even length" }
-        val data = ByteArray(len / 2)
-        var i = 0
-        while (i < len) {
-            data[i / 2] = ((Character.digit(s[i], 16) shl 4)
-                    + Character.digit(s[i + 1], 16)).toByte()
-            i += 2
-        }
-        return data
-    }
 
- */
     private fun checkDeviceTime(onChecked: (() -> Unit)? = null) {
         if (!isNetworkAvailable()) {
             onChecked?.invoke() // skip check if offline

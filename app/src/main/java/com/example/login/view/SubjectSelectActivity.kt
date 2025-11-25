@@ -6,6 +6,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +30,8 @@ import com.example.login.api.ApiClient
 import com.example.login.api.ApiService
 import com.example.login.db.entity.PendingScheduleEntity
 import com.example.login.utility.CheckNetworkAndInternetUtils
+import android.widget.Spinner
+import com.example.login.db.entity.PendingTeacherAllocationEntity
 
 
 class SubjectSelectActivity : ComponentActivity() {
@@ -60,7 +65,7 @@ class SubjectSelectActivity : ComponentActivity() {
         }
         onBackPressedDispatcher.addCallback(this, backCallback)
 
-        // 🔹 Save app state so that reopening resumes here
+        //  Save app state so that reopening resumes here
         getSharedPreferences("APP_STATE", MODE_PRIVATE)
             .edit()
             .putBoolean("IS_IN_PERIOD_SELECT", true)
@@ -70,14 +75,21 @@ class SubjectSelectActivity : ComponentActivity() {
        // setupPeriodDropdown()
         loadCourses()
 
+        binding.btnSubjectAllocation.setOnClickListener {
+            openTeacherAllocationPopup()
+        }
+
+
         binding.btnContinue.setOnClickListener {
             handleContinue()
         }
 
+
+
     }
 
 
-    // 🔹 Load courses from DB
+    //  Load courses from DB
     private fun loadCourses() {
         lifecycleScope.launch {
             val teacherId = db.sessionDao().getSessionById(sessionId)?.teacherId ?: ""
@@ -88,7 +100,7 @@ class SubjectSelectActivity : ComponentActivity() {
                     cp.teacherId == teacherId && selectedClasses.contains(cp.classId)
                 }
 
-            // 2️⃣ Extract only the courseIds teacher teaches in selected classes
+            // 2️⃣ Extract only the courseIds teacher  in selected classes
             val teacherSelectedClassCourseIds = assignedCoursePeriods.map { it.courseId }.toSet()
 
             // 1️⃣ First try to load teacher's assigned courses
@@ -98,26 +110,62 @@ class SubjectSelectActivity : ComponentActivity() {
 
        // 2️⃣ If teacher has NO assigned courses for this class → load ALL class courses
             // 3️⃣ If no course assigned → Load ALL courses for this class
+    /*
             if (courses.isEmpty()) {
 
-                Log.w("COURSE_SELECT", "Teacher has no assigned courses → showing all courses for this class")
-
-                // All CPs that belong to this class
+                // 1) Get ALL CPs for this class
                 val allCpForClass = db.coursePeriodDao().getAllCoursePeriods()
-                    .filter { cp ->
-                        selectedClasses.contains(cp.classId)
+                    .filter { cp -> selectedClasses.contains(cp.classId) }
+
+                // 2) Build popup view
+                val inflater = LayoutInflater.from(this@SubjectSelectActivity)
+                val view = inflater.inflate(R.layout.dialog_student_not_schedule_checkbox_list, null)
+                val container = view.findViewById<LinearLayout>(R.id.containerStudents)
+
+                // 3) Temp selected cpIds
+                val selectedCpIds = mutableSetOf<String>()
+
+                allCpForClass.forEach { cp ->
+                    selectedCpIds.add(cp.cpId)
+
+                    val course = db.courseDao().getAllCourses().firstOrNull { it.courseId == cp.courseId }
+                    val courseName = course?.courseTitle ?: "Course ${cp.courseId}"
+                    val cpName = cp.mpLongTitle ?: "Period"
+
+                    val cb = CheckBox(this@SubjectSelectActivity)
+                    cb.text = "$courseName\n$cpName (CP: ${cp.cpId})"
+                    cb.isChecked = true
+
+                    cb.setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) selectedCpIds.add(cp.cpId)
+                        else selectedCpIds.remove(cp.cpId)
                     }
 
-                val allClassCourseIds = allCpForClass.map { it.courseId }.toSet()
-
-                courses = db.courseDao().getAllCourses().filter { course ->
-                    allClassCourseIds.contains(course.courseId)
+                    container.addView(cb)
                 }
 
-                // Show message to user
-                showToast("No courses assigned to you — showing all class courses")
+                // 4) Popup
+                AlertDialog.Builder(this@SubjectSelectActivity)
+                    .setTitle("Assign Teacher to Courses")
+                    .setView(view)
+                    .setPositiveButton("OK") { _, _ ->
+                        lifecycleScope.launch {
+                            if (selectedCpIds.isEmpty()) {
+                                showToast("Select at least one course")
+                            } else {
+                                allocateTeacherToCourse(selectedCpIds)
+                            }
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+
+                return@launch
             }
 
+
+
+     */
 
             Log.d("CourseSelectActivity", "Filtered Courses: $courses")
 
@@ -135,7 +183,7 @@ class SubjectSelectActivity : ComponentActivity() {
 
 
 
-    // 🔹 Handle "Continue" button click
+    //  Handle "Continue" button click
     private fun handleContinue() {
 
         lifecycleScope.launch {
@@ -662,16 +710,193 @@ class SubjectSelectActivity : ComponentActivity() {
     }
 
 
-    private suspend fun showToast(msg: String) = withContext(Dispatchers.Main) {
-        Toast.makeText(this@SubjectSelectActivity, msg, Toast.LENGTH_SHORT).show()
+    private fun showToast(msg: String) {
+        runOnUiThread {
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
     }
 
 
 
 
+    private suspend fun allocateTeacherToCourse(selectedCpIds: Set<String>) = withContext(Dispatchers.IO) {
+
+        val session = db.sessionDao().getSessionById(sessionId)
+        val teacherId = session?.teacherId ?: ""
+
+        val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
+        val baseUrl = prefs.getString("baseUrl", "")!!
+        val hash = prefs.getString("hash", "")!!
+
+        // Build JSON (same as old code)
+        val req = JSONObject().apply {
+            put("actionType", "addTeacher")
+            put("actionData", JSONArray(selectedCpIds.toList()))
+            put("otherDetails", JSONObject().apply {
+                put("comment", "add another teacher to this course")
+                put("utilityName", "Manage Teacher Allocation")
+                put("user_id", "199")
+                put("teacherToAdd", teacherId)
+            })
+        }
+
+        val jsonString = req.toString()
+
+        // Check network
+        val hasNetwork = CheckNetworkAndInternetUtils.isNetworkAvailable(this@SubjectSelectActivity)
+        val hasInternet = if (hasNetwork) CheckNetworkAndInternetUtils.hasInternetAccess() else false
+
+        var serverSuccess = false
+
+        if (hasNetwork && hasInternet) {
+            try {
+                val api = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
+                val body = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("application/json"), jsonString
+                )
+                val response = api.postTeacherAllocation(body)
+
+                if (response.isSuccessful && response.body() != null) {
+
+                    val respStr = response.body()!!.string()
+                    val respJson = JSONObject(respStr)
+
+                    val status = respJson
+                        .optJSONObject("collection")
+                        ?.optJSONObject("response")
+                        ?.optJSONObject("updationStatus")
+                        ?.optString("status")
+
+                    if (status == "SUCCESS") {
+                        serverSuccess = true
+                        showToast("Teacher allocated successfully")
+                    }
+                }
+            } catch (e: Exception) {
+                serverSuccess = false
+            }
+        }
+
+        // If FAIL → SAVE LOCALLY
+        if (!serverSuccess) {
+
+            val pending = PendingTeacherAllocationEntity(
+                teacherId = teacherId,
+                cpIds = selectedCpIds.joinToString(","),
+                jsonPayload = jsonString,
+                syncStatus = "pending"
+            )
+
+            db.pendingTeacherAllocationDao().insert(pending)
+
+            // STILL update local CPs for immediate UI
+            selectedCpIds.forEach { cpId ->
+                val cp = db.coursePeriodDao().getCoursePeriodByCpId(cpId)
+                if (cp != null) {
+                    val updated = cp.copy(teacherId = teacherId)
+                    db.coursePeriodDao().insertAll(listOf(updated))
+                }
+            }
+
+            showToast("Saved offline. Will sync when internet is available.")
+        }
+
+        withContext(Dispatchers.Main) { loadCourses() }
+    }
 
 
 
+    private fun openTeacherAllocationPopup() {
+        val inflater = LayoutInflater.from(this)
+        val view = inflater.inflate(R.layout.dialog_teacher_allocation, null)
+
+        val spinnerMp = view.findViewById<Spinner>(R.id.spinnerMp)
+        val container = view.findViewById<LinearLayout>(R.id.containerCourses)
+
+        lifecycleScope.launch {
+
+            // Load MP list from CoursePeriods
+            val allCps = db.coursePeriodDao().getAllCoursePeriods()
+            // Build a list of pairs (mpId, mpLongTitle)
+            val mpItems = allCps
+                .filter { it.mpId != null && it.mpLongTitle != null }
+                .groupBy { it.mpId }
+                .map { entry ->
+                    Pair(entry.key!!, entry.value.first().mpLongTitle!!) // mpId -> mpLongTitle
+                }
+
+            spinnerMp.adapter = ArrayAdapter(
+                this@SubjectSelectActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                mpItems.map { it.second }  // show mpLongTitle
+            )
+
+
+            // Handle MP selection change
+            spinnerMp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>, view: View?, position: Int, id: Long
+                ) {
+                    val selectedMpId = mpItems[position].first  // the actual MP ID
+                    lifecycleScope.launch {
+                        loadCpCheckboxes(selectedMpId, container)
+                    }
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {}
+            }
+
+
+
+            AlertDialog.Builder(this@SubjectSelectActivity)
+                .setTitle("Teacher Allocation")
+                .setView(view)
+                .setPositiveButton("OK") { _, _ ->
+                    saveTeacherAllocation(container)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
+    private suspend fun loadCpCheckboxes(mpId: String, container: LinearLayout) {
+        withContext(Dispatchers.Main) { container.removeAllViews() }
+
+        val cps = db.coursePeriodDao().getAllCoursePeriods()
+            .filter { it.mpId == mpId }
+
+        cps.forEach { cp ->
+            val course = db.courseDao().getAllCourses()
+                .firstOrNull { it.courseId == cp.courseId }
+
+            val cb = CheckBox(this)
+            cb.text = course?.courseShortName ?: "Course"
+            cb.tag = cp.cpId
+
+            withContext(Dispatchers.Main) {
+                container.addView(cb)
+            }
+        }
+    }
+
+
+    private fun saveTeacherAllocation(container: LinearLayout) {
+        val selectedCpIds = mutableSetOf<String>()
+
+        for (i in 0 until container.childCount) {
+            val cb = container.getChildAt(i) as CheckBox
+            if (cb.isChecked) selectedCpIds.add(cb.tag.toString())
+        }
+
+        if (selectedCpIds.isEmpty()) {
+            showToast("Select at least one course period")
+            return
+        }
+
+        lifecycleScope.launch {
+            allocateTeacherToCourse(selectedCpIds)
+        }
+    }
 
 
 

@@ -135,6 +135,18 @@ data class PendingScheduleEntity(
 )
 
 
+@Entity(tableName = "pending_teacher_allocation")
+data class PendingTeacherAllocationEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
+    val teacherId: String,
+    val cpIds: String,          // comma-separated list of CPs
+    val jsonPayload: String,    // full JSON to send to server
+    val syncStatus: String = "pending"
+)
+
+
 @Entity(tableName = "sessions")
 @Parcelize
 data class Session(

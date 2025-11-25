@@ -1,5 +1,3 @@
-// api/ApiService.kt - Updated data classes based on full JSON structure for accurate parsing.
-// Placeholder fields expanded to match the provided response. Gson will handle optional/null fields.
 
 package com.example.login.api
 
@@ -91,5 +89,11 @@ interface ApiService {
         @Body body: RequestBody
     ): Response<ResponseBody>
 
+
+
+    @POST("api/v1/CoursePeriod/ManageTeacherAllocation")
+    suspend fun postTeacherAllocation(
+        @Body body: RequestBody
+    ): Response<ResponseBody>
 
 }

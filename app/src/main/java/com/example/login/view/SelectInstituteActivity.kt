@@ -195,27 +195,41 @@ class SelectInstituteActivity : AppCompatActivity() {
                     val retrofit = ApiClient.getClient(normalizedBaseUrl, HASH)
                     val apiService = retrofit.create(ApiService::class.java)
                     val db = AppDatabase.getDatabase(this@SelectInstituteActivity)
-
-                    // Call multiple APIs sequentially
                     val repository = DataSyncRepository(this@SelectInstituteActivity)
 
-                    val studentsDataFatchOk = repository.fetchAndSaveStudents(apiService, db, instIds)
-                    val teachersDataFatchOk = repository.fetchAndSaveTeachers(apiService, db, instIds)
-                    val subjectsDataFatchOk = repository.syncSubjectInstances(apiService, db)
-                    val scheduleDataOk = repository.fetchAndSaveStudentSchedulingData(apiService, db, instIds)
+                    var allOk = true
 
-                    val deviceDataFatchOk = fetchDeviceDataToServer(apiService, db, normalizedBaseUrl, instIds)
-                    Log.d(TAG, "All data synced and device config stored locally.")
+                    // 🔥 NEW: Sync each institute one-by-one
+                    selectedInstitutes.forEach { instId ->
 
-                    val allApiCallOk = studentsDataFatchOk && teachersDataFatchOk && subjectsDataFatchOk &&
-                    scheduleDataOk &&deviceDataFatchOk
+                        // 🔥 Students
+                        val st = repository.fetchAndSaveStudents(apiService, db, instId)
+                        if (!st) allOk = false
+
+                        // 🔥 Teachers
+                        val tt = repository.fetchAndSaveTeachers(apiService, db, instId)
+                        if (!tt) allOk = false
+
+                        // 🔥 Schedules
+                        val sc = repository.fetchAndSaveStudentSchedulingData(apiService, db, instId)
+                        if (!sc) allOk = false
+                    }
+
+                    // 🔥 Subject Instances do NOT depend on institute
+                    val subj = repository.syncSubjectInstances(apiService, db)
+                    if (!subj) allOk = false
+
+                    // 🔥 Device config also per selected block
+                    val device = fetchDeviceDataToServer(apiService, db, normalizedBaseUrl, selectedInstitutes.first())
+                    if (!device) allOk = false
+
                     delay(2000)
                     withContext(Dispatchers.Main) {
                         progressBar.visibility = ProgressBar.GONE
                         btnSync.isEnabled = true
 
 
-                        if(allApiCallOk){
+                        if(allOk){
 
                             prefs.edit()
                                 .putString("selectedInstituteIds", instIds)

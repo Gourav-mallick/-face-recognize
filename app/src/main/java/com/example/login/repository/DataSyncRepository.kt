@@ -46,7 +46,7 @@ class DataSyncRepository(private val context: Context) {
                 val classShortName = obj.optString("userClassShortName", "")
                 val fingerType= obj.optString("fingerType", "")
                 val fingerData= obj.optString("fingerData", "")
-                val instId = obj.optString("instId", "")
+                val instId = instIds
                 studentsList.add(Student(studentId, studentName, classId, instId,fingerType,fingerData))
                 classList.add(Class(classId, classShortName))
             }
@@ -87,7 +87,7 @@ class DataSyncRepository(private val context: Context) {
                         Teacher(
                             obj.optString("staffId", ""),
                             obj.optString("staffName", ""),
-                            obj.optString("instId", ""),
+                            instIds,
                             obj.optString("fingerType", ""),
                             obj.optString("fingerData", "")
                         )
@@ -96,6 +96,7 @@ class DataSyncRepository(private val context: Context) {
             }
             db.teachersDao().insertAll(teachersList)
             Log.d(TAG, "Inserted ${teachersList.size} teachers.")
+            Log.d(TAG, "Inserted ${teachersList} teachers.")
             true
         } else {
             showToast("Unable to fetch teacher data. Please try again.")
@@ -390,6 +391,47 @@ class DataSyncRepository(private val context: Context) {
 
 
 
+    suspend fun syncPendingTeacherAllocation(context: Context) = withContext(Dispatchers.IO) {
+
+        val db = AppDatabase.getDatabase(context)
+        val pending = db.pendingTeacherAllocationDao().getPending()
+
+        if (pending.isEmpty()) return@withContext
+
+        val prefs = context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val baseUrl = prefs.getString("baseUrl", "")!!
+        val hash = prefs.getString("hash", "")!!
+
+        val api = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
+
+        pending.forEach { p ->
+            try {
+                val body = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("application/json"),
+                    p.jsonPayload
+                )
+
+                val response = api.postTeacherAllocation(body)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val respStr = response.body()!!.string()
+                    val respJson = JSONObject(respStr)
+                    val status = respJson
+                        .optJSONObject("collection")
+                        ?.optJSONObject("response")
+                        ?.optJSONObject("updationStatus")
+                        ?.optString("status")
+
+                    if (status == "SUCCESS") {
+                        db.pendingTeacherAllocationDao().updateStatus(p.id, "complete")
+                    }
+                }
+
+            } catch (e: Exception) {
+                // keep pending
+            }
+        }
+    }
 
 
 

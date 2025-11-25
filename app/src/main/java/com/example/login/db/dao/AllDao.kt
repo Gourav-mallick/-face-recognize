@@ -16,6 +16,7 @@ import com.example.login.db.entity.CourseFullInfo
 import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.Institute
 import com.example.login.db.entity.PendingScheduleEntity
+import com.example.login.db.entity.PendingTeacherAllocationEntity
 import com.example.login.db.entity.Session
 import com.example.login.db.entity.StudentSchedule
 import com.example.login.db.entity.TeacherClassMap
@@ -268,6 +269,24 @@ interface StudentScheduleDao {
 
     @Query("DELETE FROM student_schedule")
     suspend fun clear()
+}
+
+
+
+@Dao
+interface PendingTeacherAllocationDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: PendingTeacherAllocationEntity)
+
+    @Query("SELECT * FROM pending_teacher_allocation WHERE syncStatus = 'pending'")
+    suspend fun getPending(): List<PendingTeacherAllocationEntity>
+
+    @Query("UPDATE pending_teacher_allocation SET syncStatus = :status WHERE id = :id")
+    suspend fun updateStatus(id: Long, status: String)
+
+    @Delete
+    suspend fun delete(item: PendingTeacherAllocationEntity)
 }
 
 

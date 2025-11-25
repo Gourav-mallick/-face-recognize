@@ -48,21 +48,34 @@ class AutoSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val db = AppDatabase.getDatabase(applicationContext)
             val repository = DataSyncRepository(applicationContext)
 
-            val studentsOk = repository.fetchAndSaveStudents(apiService, db, instIds)
-            val teachersOk = repository.fetchAndSaveTeachers(apiService, db, instIds)
-         //   val subjectsOk = repository.syncSubjectInstances(apiService, db)
 
-            val success = studentsOk && teachersOk
+            val instIdList = instIds.split(",")
 
-            if (success) {
+            var allOk = true
+
+            for (instId in instIdList) {
+
+                val st = repository.fetchAndSaveStudents(apiService, db, instId)
+                if (!st) allOk = false
+
+                val tt = repository.fetchAndSaveTeachers(apiService, db, instId)
+                if (!tt) allOk = false
+
+                // schedules also per-institute
+                //   val sc = repository.fetchAndSaveStudentSchedulingData(apiService, db, instId)
+                //   if (!sc) allOk = false
+            }
+
+            if (allOk) {
                 recordSyncTime()
                 sendBroadcastUpdate(applicationContext)
-                Log.i("AutoSyncWorker", "✅ Auto sync successful")
-                return Result.success()
+                Log.i("AutoSyncWorker", "Auto sync successful")
+                return  Result.success()
             } else {
-                Log.w("AutoSyncWorker", "⚠️ Some data failed to sync")
-                return Result.retry()
+                Log.w("AutoSyncWorker", "Some data failed in auto sync")
+                return  Result.retry()
             }
+
 
         } catch (e: Exception) {
             Log.e("AutoSyncWorker", "❌ Sync failed: ${e.message}", e)

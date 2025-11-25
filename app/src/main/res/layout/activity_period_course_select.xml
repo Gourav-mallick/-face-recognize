@@ -60,8 +60,19 @@
             app:layout_constraintHorizontal_bias="0.52"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvSelectCourses" />
+        <Button
+            android:id="@+id/btnSubjectAllocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Subject Teacher Allocation"
+            android:textColor="@color/black"
+            android:layout_marginBottom="12dp"
+            app:layout_constraintBottom_toTopOf="@+id/btnContinue"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    <Button
+
+        <Button
         android:id="@+id/btnContinue"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

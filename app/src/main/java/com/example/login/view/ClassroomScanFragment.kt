@@ -320,21 +320,34 @@ class ClassroomScanFragment : Fragment() {
                 "$baseUrl///"
             }
 
+            val instIdList = instIds.split(",")
             try {
                 val retrofit = ApiClient.getClient(normalizedBaseUrl, HASH)
                 val apiService = retrofit.create(ApiService::class.java)
                 val db = AppDatabase.getDatabase(requireContext())
                 val repository = DataSyncRepository(requireContext())
 
-                val studentsOk = repository.fetchAndSaveStudents(apiService, db, instIds)
-                val teachersOk = repository.fetchAndSaveTeachers(apiService, db, instIds)
-                val subjectsOk = repository.syncSubjectInstances(apiService, db)
-                val scheduleOk = repository.fetchAndSaveStudentSchedulingData(apiService, db, instIds)
+                var allOk = true
 
+                for (instId in instIdList) {
+
+                    val st = repository.fetchAndSaveStudents(apiService, db, instId)
+                    if (!st) allOk = false
+
+                    val tt = repository.fetchAndSaveTeachers(apiService, db, instId)
+                    if (!tt) allOk = false
+
+                    val sc = repository.fetchAndSaveStudentSchedulingData(apiService, db, instId)
+                    if (!sc) allOk = false
+                }
+
+                // Subjects do not depend on institute, sync once
+                val subj = repository.syncSubjectInstances(apiService, db)
+                if (!subj) allOk = false
 
                 withContext(Dispatchers.Main) {
                     progressDialog.dismiss()
-                    if (studentsOk && teachersOk && subjectsOk && scheduleOk) {
+                    if (allOk) {
                         Toast.makeText(
                             requireContext(),
                             " Sync Successful , Data synced and updated in local database.",
