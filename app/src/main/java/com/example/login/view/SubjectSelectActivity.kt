@@ -10,7 +10,6 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -31,6 +30,8 @@ import com.example.login.api.ApiService
 import com.example.login.db.entity.PendingScheduleEntity
 import com.example.login.utility.CheckNetworkAndInternetUtils
 import android.widget.Spinner
+import com.example.login.db.entity.Course
+import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.PendingTeacherAllocationEntity
 
 
@@ -53,7 +54,7 @@ class SubjectSelectActivity : ComponentActivity() {
         selectedClasses = intent.getStringArrayListExtra("SELECTED_CLASSES") ?: emptyList()
 
 
-        // 🔹 Disable back press (both button and gesture)
+        //  Disable back press (both button and gesture)
         val backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 Toast.makeText(
@@ -74,11 +75,12 @@ class SubjectSelectActivity : ComponentActivity() {
 
        // setupPeriodDropdown()
         loadCourses()
-
+/*
         binding.btnSubjectAllocation.setOnClickListener {
             openTeacherAllocationPopup()
         }
 
+ */
 
         binding.btnContinue.setOnClickListener {
             handleContinue()
@@ -88,7 +90,7 @@ class SubjectSelectActivity : ComponentActivity() {
 
     }
 
-
+/*
     //  Load courses from DB
     private fun loadCourses() {
         lifecycleScope.launch {
@@ -179,6 +181,58 @@ class SubjectSelectActivity : ComponentActivity() {
 
             binding.recyclerViewCourses.adapter = adapter
         }
+    }
+
+
+
+ */
+
+
+    // 🔹 Load courses from DB
+    private fun loadCourses() {
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            val session = db.sessionDao().getSessionById(sessionId)
+            val teacherId = session?.teacherId ?: ""
+
+            // 1️⃣ All course periods
+            val allCoursePeriods = db.coursePeriodDao().getAllCoursePeriods()
+
+            // 2️⃣ Only CPs for the teacher AND selected classes
+            val assignedCoursePeriods = allCoursePeriods.filter { cp ->
+                cp.teacherId == teacherId &&          // teacher must match
+                        selectedClasses.contains(cp.classId)   // class must match
+            }
+
+            // 3️⃣ Load all courses
+            val allCourses = db.courseDao().getAllCourses()
+
+            // 4️⃣ Convert CP → Course
+            val assignedCourses = assignedCoursePeriods.mapNotNull { cp ->
+                allCourses.firstOrNull { it.courseId == cp.courseId }
+            }
+
+            // 5️⃣ Update UI
+            withContext(Dispatchers.Main) {
+                updateCourseUI(assignedCourses)
+            }
+        }
+    }
+
+
+
+
+    private fun updateCourseUI(courses: List<Course>) {
+
+        val adapter = SubjectSelectAdapter(courses) { selectedIds ->
+            selectedCourseIds.clear()
+            selectedCourseIds.addAll(selectedIds)
+        }
+
+        binding.recyclerViewCourses.layoutManager =
+            LinearLayoutManager(this@SubjectSelectActivity)
+
+        binding.recyclerViewCourses.adapter = adapter
     }
 
 
@@ -721,12 +775,18 @@ class SubjectSelectActivity : ComponentActivity() {
 
     private suspend fun allocateTeacherToCourse(selectedCpIds: Set<String>) = withContext(Dispatchers.IO) {
 
+        Log.e("ALLOC_TEACHER", "START allocateTeacherToCourse")
+        Log.e("ALLOC_TEACHER", "Selected CP IDs = $selectedCpIds")
+
         val session = db.sessionDao().getSessionById(sessionId)
         val teacherId = session?.teacherId ?: ""
+        Log.e("ALLOC_TEACHER", "Session teacherId = $teacherId")
 
         val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
         val baseUrl = prefs.getString("baseUrl", "")!!
         val hash = prefs.getString("hash", "")!!
+
+        Log.e("ALLOC_TEACHER", "BaseURL = $baseUrl   Hash = $hash")
 
         // Build JSON (same as old code)
         val req = JSONObject().apply {
@@ -741,24 +801,29 @@ class SubjectSelectActivity : ComponentActivity() {
         }
 
         val jsonString = req.toString()
-
+        Log.e("ALLOC_TEACHER", "Request JSON = $jsonString")
         // Check network
         val hasNetwork = CheckNetworkAndInternetUtils.isNetworkAvailable(this@SubjectSelectActivity)
         val hasInternet = if (hasNetwork) CheckNetworkAndInternetUtils.hasInternetAccess() else false
+        Log.e("ALLOC_TEACHER", "NetworkAvailable=$hasNetwork  Internet=$hasInternet")
 
         var serverSuccess = false
 
         if (hasNetwork && hasInternet) {
             try {
+                Log.e("ALLOC_TEACHER", "Trying API call now…")
                 val api = ApiClient.getClient(baseUrl, hash).create(ApiService::class.java)
                 val body = okhttp3.RequestBody.create(
                     okhttp3.MediaType.parse("application/json"), jsonString
                 )
                 val response = api.postTeacherAllocation(body)
 
+                Log.e("ALLOC_TEACHER", "API Response code = ${response.code()}")
+
                 if (response.isSuccessful && response.body() != null) {
 
                     val respStr = response.body()!!.string()
+                    Log.e("ALLOC_TEACHER", "API Response body = $respStr")
                     val respJson = JSONObject(respStr)
 
                     val status = respJson
@@ -767,19 +832,30 @@ class SubjectSelectActivity : ComponentActivity() {
                         ?.optJSONObject("updationStatus")
                         ?.optString("status")
 
+                    Log.e("ALLOC_TEACHER", "Server status = $status")
+
                     if (status == "SUCCESS") {
                         serverSuccess = true
+                        Log.e("ALLOC_TEACHER", "Teacher allocation SUCCESS from server")
                         showToast("Teacher allocated successfully")
+                    }else {
+                        Log.e("ALLOC_TEACHER", "Server returned FAILURE / null")
                     }
+                }else {
+                    Log.e("ALLOC_TEACHER", "API not successful. Code = ${response.code()}")
                 }
             } catch (e: Exception) {
+                Log.e("ALLOC_TEACHER", "Exception during API call = ${e.message}")
                 serverSuccess = false
             }
+        }else {
+            Log.e("ALLOC_TEACHER", "Skipping API call → No network OR no internet")
         }
+
 
         // If FAIL → SAVE LOCALLY
         if (!serverSuccess) {
-
+            Log.e("ALLOC_TEACHER", "Saving teacher allocation OFFLINE")
             val pending = PendingTeacherAllocationEntity(
                 teacherId = teacherId,
                 cpIds = selectedCpIds.joinToString(","),
@@ -789,12 +865,18 @@ class SubjectSelectActivity : ComponentActivity() {
 
             db.pendingTeacherAllocationDao().insert(pending)
 
+            Log.e("ALLOC_TEACHER", "Inserted into pending_teacher_allocation table")
+
             // STILL update local CPs for immediate UI
             selectedCpIds.forEach { cpId ->
+                Log.e("ALLOC_TEACHER", "Updating local CP teacherId for cpId = $cpId")
                 val cp = db.coursePeriodDao().getCoursePeriodByCpId(cpId)
                 if (cp != null) {
                     val updated = cp.copy(teacherId = teacherId)
                     db.coursePeriodDao().insertAll(listOf(updated))
+                    Log.e("ALLOC_TEACHER", "Local CP updated")
+                }else {
+                    Log.e("ALLOC_TEACHER", "cpId $cpId not found in DB")
                 }
             }
 

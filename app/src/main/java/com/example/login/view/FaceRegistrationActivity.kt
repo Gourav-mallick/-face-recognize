@@ -48,7 +48,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
     private lateinit var btnEnrollFace: Button
     private var selectedStudent: Student? = null
     private var selectedTeacher: Teacher? = null
-    private val DIST_THRESHOLD = 0.80f
+    private val DIST_THRESHOLD = 0.60f
 
     private lateinit var listUsers: ListView
     private lateinit var adapter: ArrayAdapter<String>
@@ -148,6 +148,40 @@ class FaceRegistrationActivity : AppCompatActivity() {
         setupDropdownListeners()
 
         btnEnrollFace.setOnClickListener { handleActionClick() }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
+                val testId = "2234"
+
+                val stud = db.studentsDao().getStudentById(testId)
+                val emb = stud?.embedding
+
+                Log.e("DEBUG_DB_EMBED",
+                    if (emb.isNullOrEmpty())
+                        " Student 2234 has NO embedding stored!"
+                    else
+                        " Student 2234 embedding exists! Length = ${emb.length}"
+                )
+
+                if (!emb.isNullOrEmpty()) {
+                    try {
+                        val helper = FaceNetHelper(this@FaceRegistrationActivity)
+                        val testArr = emb.split(",").map { it.toFloat() }.toFloatArray()
+                        Log.e("DEBUG_DB_EMBED", "Converted embedding size: ${testArr.size}")
+                    } catch (er: Exception) {
+                        Log.e("DEBUG_DB_EMBED", "❌ Corrupted embedding data: ${er.message}")
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("DEBUG_DB_EMBED", "ERROR reading DB: ${e.message}")
+            }
+        }
+
+
+
+
     }
 
 
@@ -359,10 +393,19 @@ class FaceRegistrationActivity : AppCompatActivity() {
 
                 val existingEmbedding = student?.embedding ?: teacher?.embedding
 
+
+
                 if (embedding != null && (action == "add" || action == "update")) {
                     val match = detectMatchingFace(embedding)
                     if (match != null) {
+                        // 🔥 Update local cache before checking duplicate
+                        allStudents = db.studentsDao().getAllStudents()
+                        allTeachers = db.teachersDao().getAllTeachers()
+
+                        Log.d("DUPLICATE_FOUND", "Matched with: $match")
+
                         val (type, name, matchedId) = match
+               /*
                         if (matchedId != id) {
                             showMainToast("Registered User belongs to $type $name")
                             return@launch
@@ -371,6 +414,16 @@ class FaceRegistrationActivity : AppCompatActivity() {
                             showMainToast("This user already Registered..")
                             return@launch
                         }
+
+                */
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@FaceRegistrationActivity,
+                                "This face already registered as $name $type ($matchedId)",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        return@launch
                     }
                 }
 
@@ -441,7 +494,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
         threshold: Float = DIST_THRESHOLD
     ): Triple<String, String, String>? {
         return try {
-            val db = AppDatabase.getDatabase(this)
+            val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
             val faceNet = FaceNetHelper(this)
 
             var minDist = Float.MAX_VALUE
@@ -450,6 +503,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
             var matchId = ""
 
             val students = db.studentsDao().getAllStudents().filter { !it.embedding.isNullOrEmpty() }
+            Log.e("MATCH_DEBUG", "Total students with embeddings = ${students.size}")
             for (s in students) {
                 val stored = s.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
                 val dist = faceNet.calculateDistance(stored, newEmbedding)
@@ -459,9 +513,12 @@ class FaceRegistrationActivity : AppCompatActivity() {
                     matchName = s.studentName
                     matchId = s.studentId
                 }
+                Log.d("DISTANCE", "Comparing with ${s.studentName}(${s.studentId}) = $dist")
+
             }
 
             val teachers = db.teachersDao().getAllTeachers().filter { !it.embedding.isNullOrEmpty() }
+            Log.e("MATCH_DEBUG", "Total teachers with embeddings = ${teachers.size}")
             for (t in teachers) {
                 val stored = t.embedding!!.split(",").map { it.toFloat() }.toFloatArray()
                 val dist = faceNet.calculateDistance(stored, newEmbedding)
@@ -471,8 +528,14 @@ class FaceRegistrationActivity : AppCompatActivity() {
                     matchName = t.staffName
                     matchId = t.staffId
                 }
+                Log.d("DISTANCE", "Comparing with ${t.staffName}(${t.staffId}) = $dist")
+
             }
+            Log.e("MATCH_RESULT", "MinDist=$minDist, Threshold=$threshold, Match=$matchName ($matchId)")
+
             if (minDist < threshold) Triple(matchType, matchName, matchId) else null
+
+
         } catch (e: Exception) {
             Log.e("EnrollActivity", "detectMatchingFace error", e)
             null
@@ -528,10 +591,25 @@ class FaceRegistrationActivity : AppCompatActivity() {
 
                 if (successStatus.equals("TRUE", ignoreCase = true)) {
                     Toast.makeText(this@FaceRegistrationActivity, "Face synced to server!", Toast.LENGTH_LONG).show()
+/*
+                    val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
 
+                    if (userType == "student") {
+                        db.studentsDao().updateStudentEmbedding(id, embeddingStr ?: "")
+                    } else {
+                        db.teachersDao().updateTeacherEmbedding(id, embeddingStr ?: "")
+                    }
+
+
+ */
+                    Toast.makeText(
+                        this@FaceRegistrationActivity,
+                        "Face synced and stored locally!",
+                        Toast.LENGTH_LONG
+                    ).show()
                     // 🔹 Trigger local DB sync automatically
                     val workRequest = OneTimeWorkRequestBuilder<AutoSyncWorker>()
-                        .setInitialDelay(3, TimeUnit.SECONDS) // Optional delay
+                       .setInitialDelay(3, TimeUnit.SECONDS) // Optional delay
                         .build()
 
                     WorkManager.getInstance(this@FaceRegistrationActivity).enqueue(workRequest)

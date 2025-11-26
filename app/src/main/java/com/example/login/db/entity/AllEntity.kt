@@ -32,7 +32,8 @@ data class Teacher(
 @Entity(tableName = "course_periods")
 @Parcelize
 data class CoursePeriod(
-    @PrimaryKey val cpId: String,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val cpId: String,
     val courseId: String,
     val classId: String,
     val teacherId: String?,

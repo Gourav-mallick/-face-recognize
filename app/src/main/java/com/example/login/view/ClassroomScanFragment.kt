@@ -73,7 +73,8 @@ class ClassroomScanFragment : Fragment() {
                 .setTitle("Sync Data")
                 .setMessage("Do you want to sync data from the server and update your local database?")
                 .setPositiveButton("Yes") { _, _ ->
-                    showAuthDialogForSync()
+                    //showAuthDialogForSync()
+                    showProgressAndSync()
                 }
                 .setNegativeButton("Cancel", null)
                 .show()

@@ -144,21 +144,70 @@ class DataSyncRepository(private val context: Context) {
                 val classShortName = obj.optString("classShortNames")
                 val mpId = obj.optString("mpId")
                 val mpLongTitle = obj.optString("mpLongTitle")
-                val teacherId = obj.optString("teacherIds").replace(",", "").trim()
+                // Extract teacher IDs correctly
+                val teacherIdsRaw = obj.optString("teacherIds", "")
+                val teacherIdsList = teacherIdsRaw
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }  // ["382", "524"]
 
-                subjectList.add(Subject(subjectId, subjectTitle))
-                courseList.add(Course(courseId, subjectId, courseTitle, courseTitle))
-                coursePeriodList.add(CoursePeriod(cpId, courseId, classId, teacherId, mpId, mpLongTitle))
+              // Primary teacher (first in list)
+                val primaryTeacherId = teacherIdsList.firstOrNull() ?: ""
 
-                // 👇 NEW MAPPING
-                if (teacherId.isNotEmpty()) {
+            // Save subject
+                subjectList.add(
+                    Subject(subjectId, subjectTitle)
+                )
+
+              // Save course
+                courseList.add(
+                    Course(courseId, subjectId, courseTitle, courseTitle)
+                )
+
+             // Save course period (only primary teacher in this table)
+                // ➤ Save course period ONCE FOR EACH TEACHER
+                teacherIdsList.forEach { tId ->
+                    coursePeriodList.add(
+                        CoursePeriod(
+                            cpId = cpId,
+                            courseId = courseId,
+                            classId = classId,
+                            teacherId = tId,   // EACH TEACHER GETS OWN ROW
+                            mpId = mpId,
+                            mpLongTitle = mpLongTitle
+                        )
+                    )
+                }
+
+
+                // Save ALL teacher ↔ class mappings
+                teacherIdsList.forEach { tId ->
                     teacherClassMapList.add(
                         TeacherClassMap(
-                            teacherId = teacherId,
+                            teacherId = tId,
                             classId = classId
                         )
                     )
                 }
+
+                /*
+                         val teacherId = obj.optString("teacherIds").replace(",", "").trim()
+
+                         subjectList.add(Subject(subjectId, subjectTitle))
+                         courseList.add(Course(courseId, subjectId, courseTitle, courseTitle))
+                         coursePeriodList.add(CoursePeriod(cpId, courseId, classId, teacherId, mpId, mpLongTitle))
+
+                         // 👇 NEW MAPPING
+                         if (teacherId.isNotEmpty()) {
+                             teacherClassMapList.add(
+                                 TeacherClassMap(
+                                     teacherId = teacherId,
+                                     classId = classId
+                                 )
+                             )
+                         }
+
+                 */
             }
 
 
