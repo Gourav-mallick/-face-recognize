@@ -73,8 +73,10 @@
                         android:layout_height="wrap_content"
                         android:text="Student"
                         android:textColor="#E0E0E0"
-                        android:buttonTint="#FFFFFF" />
-
+                        android:buttonTint="#FFFFFF"
+                        android:checked="true"
+                        />
+<!--
                     <RadioButton
                         android:id="@+id/rbTeacher"
                         android:layout_width="wrap_content"
@@ -83,12 +85,12 @@
                         android:textColor="#E0E0E0"
                         android:buttonTint="#80FFFFFF"
                         android:enabled="false" />
-
+-->
                     <RadioButton
                         android:id="@+id/rbStaff"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Staff"
+                        android:text="Teacher"
                         android:textColor="#E0E0E0"
                         android:buttonTint="#FFFFFF" />
                 </RadioGroup>

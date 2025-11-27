@@ -83,6 +83,10 @@ class AttendanceOverviewActivity : ComponentActivity() {
 
             for (classId in selectedClasses) {
                 val students = db.studentsDao().getAllStudents().filter { it.classId == classId }
+                val classObj=db.classDao().getClassById(classId)
+                val classShortName = classObj?.classShortName ?: classId
+                Log.d("ATTENDANCE_DEBUG", "classShortName is=$classShortName")
+
                 val attendance = db.attendanceDao().getAttendancesForClass(sessionId, classId)
 
                 val totalStudents = students.size
@@ -98,7 +102,7 @@ class AttendanceOverviewActivity : ComponentActivity() {
 
                 classSummaries.add(
                     ClassOverviewData(
-                        className = classId,
+                        className = classShortName,
                         totalStudents = totalStudents,
                         presentCount = presentCount,
                         absentCount = absentCount,

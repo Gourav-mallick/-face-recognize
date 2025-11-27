@@ -171,7 +171,7 @@
 
             <!-- REGISTER -->
             <Button
-                android:id="@+id/tvEnrollUser"
+                android:id="@+id/tvFaceRegister"
                 android:layout_width="wrap_content"
                 android:layout_height="42dp"
                 android:background="@drawable/btn_transparent"

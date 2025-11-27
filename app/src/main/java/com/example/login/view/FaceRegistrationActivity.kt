@@ -48,7 +48,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
     private lateinit var btnEnrollFace: Button
     private var selectedStudent: Student? = null
     private var selectedTeacher: Teacher? = null
-    private val DIST_THRESHOLD = 0.60f
+    private val DIST_THRESHOLD = 0.80f
 
     private lateinit var listUsers: ListView
     private lateinit var adapter: ArrayAdapter<String>
@@ -149,6 +149,8 @@ class FaceRegistrationActivity : AppCompatActivity() {
 
         btnEnrollFace.setOnClickListener { handleActionClick() }
 
+
+        //only for test - other no use
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val db = AppDatabase.getDatabase(this@FaceRegistrationActivity)
@@ -459,13 +461,10 @@ class FaceRegistrationActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        if (userType == "student") {
-                            db.studentsDao().updateStudentEmbedding(id, "")
-                        } else {
-                            db.teachersDao().updateTeacherEmbedding(id, "")
-                        }
+                        // 🔥 Call server to delete face → empty template
+                        sendFaceToServer(id, userType, "")
 
-                        showMainToast("Face deleted successfully.")
+                        showMainToast("Deleting Face... please wait")
                     }
 
                 }
@@ -485,7 +484,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
 
     private suspend fun showMainToast(msg: String) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(this@FaceRegistrationActivity, msg, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@FaceRegistrationActivity, msg, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -625,7 +624,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
         }
     }
 
-
+/*
     private fun showDeleteFaceRegisterAuthDialog(userId: String) {
         val input = EditText(this)
         input.hint = "Enter admin PIN"
@@ -649,6 +648,41 @@ class FaceRegistrationActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .create()
+
+        dialog.show()
+    }
+
+ */
+
+    private fun showDeleteFaceRegisterAuthDialog(userId: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_auth_sync, null)
+        val edtUsername = dialogView.findViewById<EditText>(R.id.edtUsername)
+        val edtPassword = dialogView.findViewById<EditText>(R.id.edtPassword)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        val btnSubmit = dialogView.findViewById<Button>(R.id.btnSubmit)
+
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnSubmit.setOnClickListener {
+            val enteredUser = edtUsername.text.toString().trim()
+            val enteredPass = edtPassword.text.toString().trim()
+
+            val prefs = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
+            val savedUser = prefs.getString("username", "")
+            val savedPass = prefs.getString("password", "")
+
+            if (enteredUser == savedUser && enteredPass == savedPass) {
+                dialog.dismiss()
+                saveFace(userId, null)  // ← Same logic as before (Delete face)
+            } else {
+                Toast.makeText(this, "Invalid credentials!", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         dialog.show()
     }

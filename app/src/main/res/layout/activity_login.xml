@@ -48,7 +48,9 @@
                 android:hint="Enter Server URL"
                 android:inputType="textUri"
                 android:padding="12dp"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:textCursorDrawable="@null"/>
 
             <EditText
                 android:id="@+id/edtUsername"
@@ -61,7 +63,9 @@
                 android:textSize="16sp"
                 android:inputType="textNoSuggestions"
                 android:autofillHints=""
-                android:importantForAutofill="no"/>
+                android:importantForAutofill="no"
+                android:textColor="@android:color/black"
+                android:textCursorDrawable="@null"/>
 
             <EditText
                 android:id="@+id/edtPassword"
@@ -74,7 +78,9 @@
                 android:padding="12dp"
                 android:textSize="16sp"
                 android:autofillHints=""
-                android:importantForAutofill="no"/>
+                android:importantForAutofill="no"
+                android:textColor="@android:color/black"
+                android:textCursorDrawable="@null"/>
 
             <Button
                 android:id="@+id/btnLogin"

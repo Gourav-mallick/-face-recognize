@@ -62,9 +62,25 @@ class ClassroomScanFragment : Fragment() {
         val tvLastSync = view.findViewById<TextView>(R.id.tvLastSync)
 
         val lastSync = prefs.getString("last_sync_time", null)
+/*
         if (lastSync != null) {
             tvLastSync.text = "Last Sync: $lastSync"
         }
+
+ */
+
+
+        val inputFormat = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm:ss a", java.util.Locale.getDefault())
+        val outputFormat = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+
+        val formattedTime = try {
+            inputFormat.parse(lastSync)?.let { outputFormat.format(it) } ?: lastSync
+        } catch (e: Exception) {
+            lastSync // fallback
+        }
+
+        tvLastSync.text = "Last Sync: $formattedTime"
+
 
         // inside onViewCreated
         val tvManualDataSync = view.findViewById<Button>(R.id.tvManualDataSync)
@@ -84,13 +100,13 @@ class ClassroomScanFragment : Fragment() {
 
 
         //face recognize enrollment
-        val tvEnrollUser=view.findViewById<Button>(R.id.tvEnrollUser)
-        tvEnrollUser.setOnClickListener {
+        val tvFaceRegistration=view.findViewById<Button>(R.id.tvFaceRegister)
+        tvFaceRegistration.setOnClickListener {
             AlertDialog.Builder(requireContext())
                 .setTitle("Registration User")
                 .setMessage("Do you want to Registration User Face?")
                 .setPositiveButton("Yes") { _, _ ->
-                    showAuthDialogForEnrollment()
+                    showAuthDialogForRregistration()
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -109,7 +125,7 @@ class ClassroomScanFragment : Fragment() {
 
 
 
-// Listen for broadcast updates
+    // Listen for broadcast updates
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 val time = intent?.getStringExtra("time") ?: return
@@ -154,7 +170,7 @@ class ClassroomScanFragment : Fragment() {
         // 🕓 Show count of unsubmitted (active) sessions
         refreshUnsubmittedSessions()
 
-// 🔔 Listen for broadcast to refresh count after session ends
+//  Listen for broadcast to refresh count after session ends
         val updateFilter = IntentFilter("UPDATE_UNSUBMITTED_COUNT")
         @Suppress("UnspecifiedRegisterReceiverFlag")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -249,7 +265,7 @@ class ClassroomScanFragment : Fragment() {
     }
 
 
-    private fun showAuthDialogForEnrollment() {
+    private fun showAuthDialogForRregistration() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_auth_sync, null)
         val edtUsername = dialogView.findViewById<EditText>(R.id.edtUsername)
         val edtPassword = dialogView.findViewById<EditText>(R.id.edtPassword)
@@ -430,5 +446,9 @@ class ClassroomScanFragment : Fragment() {
             }
         }
     }
+
+
+
+
 }
 

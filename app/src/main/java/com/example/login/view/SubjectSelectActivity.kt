@@ -76,7 +76,7 @@ class SubjectSelectActivity : ComponentActivity() {
        // setupPeriodDropdown()
         loadCourses()
 /*
-        binding.btnSubjectAllocation.setOnClickListener {
+            binding.btnSubjectAllocation.setOnClickListener {
             openTeacherAllocationPopup()
         }
 
