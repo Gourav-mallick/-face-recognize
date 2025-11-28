@@ -25,7 +25,7 @@ class DataSyncRepository(private val context: Context) {
         instIds: String
     ): Boolean = withContext(Dispatchers.IO) {
         val rParam = "api/v1/User/GetUserRegisteredDetails"
-        val dataParam = "{\"userRegParamData\":{\"userType\":\"student\",\"registrationType\":\"FingerPrint\",\"school_id\":\"$instIds\"}}"
+        val dataParam = "{\"userRegParamData\":{\"userType\":\"student\",\"registrationType\":\"Biometric\",\"school_id\":\"$instIds\"}}"
         val response = apiService.getStudents(rParam, dataParam)
 
         if (response.isSuccessful && response.body() != null) {
@@ -69,7 +69,7 @@ class DataSyncRepository(private val context: Context) {
         instIds: String
     ): Boolean = withContext(Dispatchers.IO) {
         val rParam = "api/v1/User/GetUserRegisteredDetails"
-        val dataParam = "{\"userRegParamData\":{\"userType\":\"staff\",\"registrationType\":\"FingerPrint\",\"school_id\":\"$instIds\"}}"
+        val dataParam = "{\"userRegParamData\":{\"userType\":\"staff\",\"registrationType\":\"Biometric\",\"school_id\":\"$instIds\"}}"
         val response = apiService.getTeachers(rParam, dataParam)
 
         if (response.isSuccessful && response.body() != null) {

@@ -77,7 +77,7 @@ class FaceRegistrationActivity : AppCompatActivity() {
                 }
 
                 // -----------------------------
-                // 🔹 Convert to Bitmaps
+                //  Convert to Bitmaps
                 // -----------------------------
                 val bmp1 = BitmapFactory.decodeByteArray(img1, 0, img1.size)
                 val bmp2 = BitmapFactory.decodeByteArray(img2, 0, img2.size)
@@ -550,12 +550,12 @@ class FaceRegistrationActivity : AppCompatActivity() {
         {
           "userRegParamData": {
             "userType": "$userType",
-            "registrationType": "FingerPrint",
+            "registrationType": "Biometric",
             "regParamData": [
               {
                 "userId": "$id",
-                "metricType": "finger",
-                "fingerType": "Biometric",
+                "metricType": "faceSignature",
+                "fingerType": "faceSignature",
                 "template": "${embeddingStr ?: ""}"
               }
             ]

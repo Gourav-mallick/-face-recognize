@@ -270,10 +270,29 @@ class LoginActivity : AppCompatActivity() {
 
                         val status = authResponseObj?.optString("statusMsg", "FAIL") ?: "FAIL"
 
+
+
                         if (status != "SUCCESS") {
                             Toast.makeText(this@LoginActivity, "Invalid username or password", Toast.LENGTH_LONG).show()
                             return@withContext
                         }
+
+                        val staffDetails = authResponseObj?.optJSONObject("staffDetails")
+                        val staffId = staffDetails?.optString("staffId", null)
+
+
+                        if (staffId.isNullOrEmpty()) {
+                            Toast.makeText(
+                                this@LoginActivity,
+                                "Invalid authentication data. Please contact admin.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@withContext
+                        }
+
+                        prefs.edit()
+                            .putString("loggedStaffId", staffId)
+                            .apply()
 
                         // 2) CALL SCHOOL LIST API
                         val schoolResponse = service.getSchoolList()

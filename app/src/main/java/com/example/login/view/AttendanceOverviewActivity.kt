@@ -156,12 +156,14 @@ class AttendanceOverviewActivity : ComponentActivity() {
                     attArray.put(mapAttendanceToApiFormat(att))
                 }
 
+                val loggedStaffId = prefs.getString("loggedStaffId", null)
+
                 val requestBodyJson = JSONObject().apply {
                     put("attParamDataObj", JSONObject().apply {
                         put("attDataArr", attArray)
                         put("attAttachmentArr", JSONArray())
                         put("attendanceMethod", "periodDayWiseAttendance")
-                        put("loggedInUsrId", "1")
+                        put("loggedInUsrId", loggedStaffId)
                     })
                 }
 
