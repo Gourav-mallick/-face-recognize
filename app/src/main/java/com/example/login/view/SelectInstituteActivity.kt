@@ -213,6 +213,11 @@ class SelectInstituteActivity : AppCompatActivity() {
                         // 🔥 Schedules
                         val sc = repository.fetchAndSaveStudentSchedulingData(apiService, db, instId)
                         if (!sc) allOk = false
+
+                        //periods details
+                        val pd = repository.fetchAndSaveSchoolPeriods(apiService, db, instId)
+                        if (!pd) allOk = false
+
                     }
 
                     // 🔥 Subject Instances do NOT depend on institute

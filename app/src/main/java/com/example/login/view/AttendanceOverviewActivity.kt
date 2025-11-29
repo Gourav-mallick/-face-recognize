@@ -290,7 +290,7 @@ class AttendanceOverviewActivity : ComponentActivity() {
             put("int_rollNo","")
             put("attCycleId","")
             put("attSessionId",att.sessionId)
-            put("attSchoolPeriodId","1")
+            put("attSchoolPeriodId",att.attSchoolPeriodId)
             put("attSchoolPeriodTitle","")
             put("attSessionStartDateTime",dataStartTime )
             put("attSessionEndDateTime",dataEndTime)

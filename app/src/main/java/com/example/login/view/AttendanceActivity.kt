@@ -288,10 +288,15 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
             val sessionId = UUID.randomUUID().toString()
             val estimated = getEstimatedCurrentTime()
             val startTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(estimated)
+            Log.d("SESSION_DEBUG", "Session start time: $startTime")
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(estimated)
-            val inst_id=db.teachersDao().getInstituteIdByTeacherId(teacherId)
+            val inst_id = db.teachersDao().getInstituteIdByTeacherId(teacherId)!!
            // val instId = getSharedPreferences("LoginPrefs", MODE_PRIVATE)
             //    .getString("selectedInstituteIds", "") ?: ""
+
+            // 🔥 NEW: Calculate spId at session start
+            val spId = getFlexibleSchoolPeriodId(inst_id, startTime)
+            Log.d("PERIOD_SAVE", "Session Start=$startTime → spId=$spId")
 
             val session = Session(
                 sessionId = sessionId,
@@ -302,11 +307,12 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 startTime = startTime,
                 endTime = "",
                 isMerged = 0,
-                instId = inst_id!!,
+                instId = inst_id,
+                attSchoolPeriodId = spId,
                 syncStatus = "pending",
                 periodId = ""
             )
-            Log.d("SESSION_DEBUG", "Session: $session")
+            Log.d("SESSION_DEBUG", "Session data log: $session")
             db.sessionDao().insertSession(session)
 
             val newCycle = AttendanceCycle(
@@ -417,6 +423,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
             val sessionObj = db.sessionDao().getSessionById(cycle.sessionId!!)
             val inst_id = sessionObj?.instId ?: ""
+            val attSchoolPeriodId= sessionObj?.attSchoolPeriodId ?: ""
 
 
             Log.d("SYNC_DEBUG_attandance", "Institute Id get: $inst_id")
@@ -444,6 +451,7 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                 period = "",
                 teacherId =cycle.teacherId!!,
                 teacherName = cycle.teacherName!!,
+                attSchoolPeriodId = attSchoolPeriodId
             )
 
 
@@ -854,6 +862,36 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
 
     private fun showUserMessage(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+
+
+    private suspend fun getFlexibleSchoolPeriodId(instId: String, startTime: String): String {
+        val db = AppDatabase.getDatabase(this)
+        val periods = db.schoolPeriodDao().getAll().filter { it.instId == instId }
+
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val now = sdf.parse(startTime) ?: return ""
+
+        val GRACE_MINUTES = 10
+
+        for (p in periods) {
+            val start = sdf.parse(p.spIstTime)!!
+            val end = sdf.parse(p.spEndTime)!!
+            val graceStart = Date(start.time - GRACE_MINUTES * 60 * 1000)
+
+            if (now.after(start) && now.before(end)) {
+                Log.d("PERIOD_ASSIGN", "Inside → ${p.spTitle} spId=${p.spId}")
+                return p.spId
+            }
+            if (now.after(graceStart) && now.before(start)) {
+                Log.d("PERIOD_ASSIGN", "Grace → ${p.spTitle} spId=${p.spId}")
+                return p.spId
+            }
+        }
+
+        Log.w("PERIOD_ASSIGN", "No matching period for $startTime")
+        return ""
     }
 
 }

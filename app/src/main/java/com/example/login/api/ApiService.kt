@@ -96,4 +96,12 @@ interface ApiService {
         @Body body: RequestBody
     ): Response<ResponseBody>
 
+
+    @GET("sims-services/digitalsims/")
+    suspend fun getPeriodDetails(
+        @Query("r") r: String,
+        @Query("data") data: String
+    ): Response<ResponseBody>
+
+
 }

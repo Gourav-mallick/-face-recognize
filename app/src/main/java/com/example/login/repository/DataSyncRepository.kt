@@ -484,4 +484,84 @@ class DataSyncRepository(private val context: Context) {
 
 
 
+    suspend fun fetchAndSaveSchoolPeriods(
+        apiService: ApiService,
+        db: AppDatabase,
+        instId: String
+    ): Boolean = withContext(Dispatchers.IO) {
+
+        try {
+            // 🔹 Get syear dynamically from DB
+            val sYear = db.instituteDao().getInstituteYearById(instId) ?: ""
+            Log.d("SYNC_PERIOD", "Institute: $instId | Academic Year: $sYear")
+
+            val rParam = "api/v1/Att/ManageMarkingGlobalAtt"
+            val dataParam = """
+            {
+                "attParamDataObj":{
+                    "actionType":"getPeriodDetailsForMarkingGlobalAtt",
+                    "actionData":{
+                        "instId":"$instId",
+                        "syear":"$sYear",
+                        "attendanceMethod":"periodDayWiseAttendance"
+                    }
+                }
+            }
+        """.trimIndent()
+
+            // 🔹 Log the outgoing request data
+            Log.d("PERIOD_API_REQUEST", "URL Query: r=$rParam")
+            Log.d("PERIOD_API_REQUEST", "Payload: $dataParam")
+
+            val response = apiService.getPeriodDetails(rParam, dataParam)
+
+            if (!response.isSuccessful || response.body() == null) {
+                Log.e("PERIOD_API_FAILED", "${response.errorBody()?.string()}")
+                return@withContext false
+            }
+
+            val respString = response.body()!!.string()
+            // 🔹 Log raw response
+            Log.d("PERIOD_API_RESPONSE", respString)
+
+            val json = JSONObject(respString)
+            val dataArr = json
+                .optJSONObject("collection")
+                ?.optJSONObject("response")
+                ?.optJSONArray("data") ?: JSONArray()
+
+            val periodList = mutableListOf<SchoolPeriod>()
+
+            for (i in 0 until dataArr.length()) {
+                val obj = dataArr.getJSONObject(i)
+                periodList.add(
+                    SchoolPeriod(
+                        spId = obj.optString("spId"),
+                        spTitle = obj.optString("spTitle"),
+                        spStartTime = obj.optString("spStartTime"),
+                        spEndTime = obj.optString("spEndTime"),
+                        spIstTime = obj.optString("spIstTime"),
+                        instId = instId
+                    )
+                )
+            }
+
+            // Optional: Clear old before saving new
+            db.schoolPeriodDao().insertAll(periodList)
+
+            Log.d("SYNC_PERIOD", "Saved ${periodList.size} period rows")
+            Log.d("SYNC_PERIOD_DATA", periodList.toString())
+            return@withContext true
+
+        } catch (e: Exception) {
+            Log.e("SYNC_PERIOD_ERROR", "Exception: ${e.message}")
+            return@withContext false
+        }
+    }
+
+
+
+
+
+
 }

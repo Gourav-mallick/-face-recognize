@@ -17,6 +17,7 @@ import com.example.login.db.entity.CoursePeriod
 import com.example.login.db.entity.Institute
 import com.example.login.db.entity.PendingScheduleEntity
 import com.example.login.db.entity.PendingTeacherAllocationEntity
+import com.example.login.db.entity.SchoolPeriod
 import com.example.login.db.entity.Session
 import com.example.login.db.entity.StudentSchedule
 import com.example.login.db.entity.TeacherClassMap
@@ -176,6 +177,18 @@ interface ClassDao {
 
 }
 
+@Dao
+interface SchoolPeriodDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(periods: List<SchoolPeriod>)
+
+    @Query("SELECT * FROM school_periods")
+    suspend fun getAll(): List<SchoolPeriod>
+
+    @Query("DELETE FROM school_periods")
+    suspend fun clear()
+}
 
 @Dao
 interface TeacherClassMapDao {
