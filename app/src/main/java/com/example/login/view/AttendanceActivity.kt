@@ -45,12 +45,9 @@ import androidx.work.OneTimeWorkRequest
 
 class AttendanceActivity : AppCompatActivity() {
 
-
     private val TAG = "ATTANDANCE_ACTIVITY"
 
-
     private val CAMERA_PERMISSION_REQUEST_CODE = 1001
-
 
     companion object {
         private const val TAG_CLASSROOM = "CLASSROOM"
@@ -145,7 +142,6 @@ class AttendanceActivity : AppCompatActivity() {
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "HourlySync", ExistingPeriodicWorkPolicy.KEEP, request
         )
-
 
 
         // Restore pending sessions (endTime empty) into activeClasses
@@ -497,8 +493,6 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                         sendBroadcast(broadcastIntent )
 
 
-
-
                         Log.d("SESSION_END", "Session ${cycle.sessionId} closed at $currentTime")
 
                         //  Clear saved app state before starting new flow
@@ -515,7 +509,6 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
                         activeSessions.remove(Pair(classroomId, teacherId))
 
                         currentVisibleClassroomId = null
-
 
                     }
                 }
@@ -891,7 +884,10 @@ private fun handleTeacherScan(teacherId: String, teacherName: String) {
         }
 
         Log.w("PERIOD_ASSIGN", "No matching period for $startTime")
-        return ""
+
+        val defaultSpId = periods.first().spId
+        Log.w("PERIOD_ASSIGN", "No match for $startTime, fallback → spId=$defaultSpId")
+        return defaultSpId
     }
 
 }
